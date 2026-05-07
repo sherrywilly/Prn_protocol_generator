@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: A4;
+    margin: 1.5cm 2cm;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 10pt;
+    color: #000;
+    line-height: 1.4;
+  }
+  h1 {
+    text-align: center;
+    font-size: 16pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-bottom: 6px;
+  }
+  .field {
+    flex: 1;
+    border: 1px solid #999;
+    padding: 4px 6px;
+    margin-right: 4px;
+    min-width: 0;
+  }
+  .field:last-child { margin-right: 0; }
+  .field label {
+    font-weight: bold;
+    display: block;
+    font-size: 8pt;
+    color: #333;
+  }
+  .field .value {
+    font-size: 10pt;
+    min-height: 14px;
+  }
+  .section {
+    margin-top: 10px;
+    margin-bottom: 6px;
+  }
+  .section-header {
+    font-weight: bold;
+    font-size: 9pt;
+    color: #222;
+    margin-bottom: 4px;
+  }
+  .section-box {
+    border: 1px solid #999;
+    padding: 6px;
+    min-height: 40px;
+    font-size: 10pt;
+  }
+  .section-box ul {
+    margin: 0;
+    padding-left: 16px;
+  }
+  .section-box li {
+    margin-bottom: 2px;
+  }
+  .gp-section {
+    margin-top: 10px;
+    border: 1px solid #999;
+    padding: 6px;
+  }
+  .gp-section .gp-title {
+    font-weight: bold;
+    margin-bottom: 6px;
+    font-size: 9.5pt;
+  }
+  .gp-item {
+    margin-bottom: 4px;
+    font-size: 10pt;
+  }
+  .sig-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 9.5pt;
+  }
+  .sig-table th, .sig-table td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    text-align: left;
+  }
+  .sig-table th {
+    background-color: #e0e0e0;
+    font-weight: bold;
+  }
+  .sig-table .role-col { width: 20%; font-weight: bold; }
+  .sig-table .name-col { width: 30%; }
+  .sig-table .desig-col { width: 30%; }
+  .sig-table .date-col { width: 20%; }
+  .checked { font-family: Arial; }
+</style>
+</head>
+<body>
+
+<h1>PRN Protocol</h1>
+
+<!-- Resident Info Row -->
+<div class="row">
+  <div class="field" style="flex:2">
+    <label>Resident's Name</label>
+    <div class="value">{{ protocol.resident.name }}</div>
+  </div>
+  <div class="field">
+    <label>Room No.</label>
+    <div class="value">{{ protocol.resident.room_number }}</div>
+  </div>
+  <div class="field">
+    <label>Date of Birth</label>
+    <div class="value">{{ protocol.resident.date_of_birth|date:"d/m/Y" }}</div>
+  </div>
+</div>
+
+<!-- Medicine Row -->
+<div class="row">
+  <div class="field" style="flex:2">
+    <label>Name of Medicine</label>
+    <div class="value">{{ protocol.medicine_name }}</div>
+  </div>
+  <div class="field">
+    <label>Form</label>
+    <div class="value">{{ protocol.form }}</div>
+  </div>
+</div>
+
+<!-- Strength / Route Row -->
+<div class="row">
+  <div class="field">
+    <label>Strength</label>
+    <div class="value">{{ protocol.strength }}</div>
+  </div>
+  <div class="field">
+    <label>Route of Administration</label>
+    <div class="value">{{ protocol.route_of_administration }}</div>
+  </div>
+</div>
+
+<!-- Dose / Interval Row -->
+<div class="row">
+  <div class="field" style="flex:2">
+    <label>Dose and Frequency</label>
+    <div class="value">{{ protocol.dose_and_frequency }}</div>
+  </div>
+  <div class="field" style="flex:1.5">
+    <label>Minimum Time Interval Between Doses</label>
+    <div class="value">{{ protocol.min_time_interval }}</div>
+  </div>
+</div>
+
+<!-- Max Dose -->
+<div class="row">
+  <div class="field">
+    <label>Maximum Dose in 24 Hours</label>
+    <div class="value">{{ protocol.max_dose_24h }}</div>
+  </div>
+</div>
+
+<!-- Capacity Statement -->
+<div class="section">
+  <div class="section-header">Does the resident request medication / require prompting / require observing for symptoms:</div>
+  <div class="section-box">{{ protocol.capacity_statement }}</div>
+</div>
+
+<!-- Reason for Administration -->
+<div class="section">
+  <div class="section-header">Reason for medication administration &mdash; describe in as much detail as possible the condition being treated i.e. signs and symptoms, behaviours, type of pain &mdash; where and when, expected outcome. For creams indicate where it should be applied. If the dose is variable, describe the circumstances under which each dose is to be given.</div>
+  <div class="section-box">{{ protocol.reason_for_administration }}</div>
+</div>
+
+<!-- Special Instructions -->
+<div class="section">
+  <div class="section-header">Special Instructions (e.g. specific administration instructions)</div>
+  <div class="section-box">
+    {% with items=protocol.get_special_instructions_list %}
+    {% if items %}
+    <ul>
+      {% for item in items %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    &nbsp;
+    {% endif %}
+    {% endwith %}
+  </div>
+</div>
+
+<!-- Additional Information -->
+<div class="section">
+  <div class="section-header">Additional information (e.g. side effects to look out for; what to do if requesting more frequently than prescribed or not requiring medication at all)</div>
+  <div class="section-box">
+    {% with items=protocol.get_additional_information_list %}
+    {% if items %}
+    <ul>
+      {% for item in items %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    &nbsp;
+    {% endif %}
+    {% endwith %}
+  </div>
+</div>
+
+<!-- GP Reporting -->
+<div class="gp-section">
+  <div class="gp-title">Circumstance of reporting to GP (Tick as appropriate)</div>
+  <div class="gp-item">{% if protocol.gp_persistent_need %}&#9746;{% else %}&#9744;{% endif %} Persistent need for upper level of dosage</div>
+  <div class="gp-item">{% if protocol.gp_never_requesting %}&#9746;{% else %}&#9744;{% endif %} Never requesting dosage</div>
+  <div class="gp-item">{% if protocol.gp_requesting_too_often %}&#9746;{% else %}&#9744;{% endif %} Requesting too often</div>
+  <div class="gp-item">{% if protocol.gp_side_effects %}&#9746;{% else %}&#9744;{% endif %} Side effects experienced</div>
+  <div class="gp-item">&#9744; Other (please state): {{ protocol.gp_other|default:"___________" }}</div>
+</div>
+
+<!-- Signatures Table -->
+<table class="sig-table">
+  <thead>
+    <tr>
+      <th class="role-col"></th>
+      <th class="name-col">Name &amp; Signature</th>
+      <th class="desig-col">Designation</th>
+      <th class="date-col">Date</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="role-col">Prepared by</td>
+      <td>{{ protocol.prepared_by_name }}</td>
+      <td>{{ protocol.prepared_by_designation }}</td>
+      <td>{{ protocol.prepared_by_date|date:"d/m/Y"|default:"" }}</td>
+    </tr>
+    <tr>
+      <td>Approved by</td>
+      <td>{{ protocol.approved_by_name }}</td>
+      <td>{{ protocol.approved_by_designation }}</td>
+      <td>{{ protocol.approved_by_date|date:"d/m/Y"|default:"" }}</td>
+    </tr>
+    <tr>
+      <td>Review date:</td>
+      <td colspan="3">{{ protocol.review_date|date:"d/m/Y"|default:"" }}</td>
+    </tr>
+    <tr>
+      <td>Reviewed by</td>
+      <td>{{ protocol.reviewed_by_name }}</td>
+      <td>{{ protocol.reviewed_by_designation }}</td>
+      <td>{{ protocol.reviewed_by_date|date:"d/m/Y"|default:"" }}</td>
+    </tr>
+    <tr>
+      <td>Checked by</td>
+      <td>{{ protocol.checked_by_name }}</td>
+      <td>{{ protocol.checked_by_designation }}</td>
+      <td>{{ protocol.checked_by_date|date:"d/m/Y"|default:"" }}</td>
+    </tr>
+    <tr>
+      <td>New review date:</td>
+      <td colspan="3">{{ protocol.new_review_date|date:"d/m/Y"|default:"" }}</td>
+    </tr>
+  </tbody>
+</table>
+
+</body>
+</html>

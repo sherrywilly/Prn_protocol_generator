@@ -1,0 +1,13 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Protocols for {{ resident.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'resident_detail' resident.pk %}" class="text-decoration-none">
+        <i class="bi bi-arrow-left"></i> Back to {{ resident.name }}
+    </a>
+</div>
+<h2>Protocols for {{ resident.name }}</h2>
+{% include 'core/resident_detail.html' %}
+{% endblock %}
