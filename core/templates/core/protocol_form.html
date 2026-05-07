@@ -224,7 +224,6 @@ const aiBtn = document.getElementById('aiAssistBtn');
 const aiSpinner = document.getElementById('aiSpinner');
 const aiIcon = document.getElementById('aiIcon');
 const aiError = document.getElementById('aiError');
-const residentName = "{{ resident.name|escapejs }}";
 
 aiBtn.addEventListener('click', async () => {
     const medicineName = document.getElementById('id_medicine_name').value.trim();
@@ -245,7 +244,7 @@ aiBtn.addEventListener('click', async () => {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
             },
-            body: JSON.stringify({ medicine_name: medicineName, resident_name: residentName }),
+            body: JSON.stringify({ medicine_name: medicineName }),
         });
         const data = await response.json();
         if (data.error) {

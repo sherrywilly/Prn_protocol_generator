@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_ai_protocol_suggestions(medicine_name, resident_name="the resident"):
+def get_ai_protocol_suggestions(medicine_name):
     api_key = os.environ.get('OPENAI_API_KEY', '')
     if not api_key:
         return {}
@@ -14,9 +14,10 @@ def get_ai_protocol_suggestions(medicine_name, resident_name="the resident"):
         from openai import OpenAI
         client = OpenAI(api_key=api_key)
         prompt = f"""You are a clinical pharmacist assistant helping care home staff fill in a PRN (Pro Re Nata / as needed) medication protocol form.
+Do not request, use, or infer any personally identifiable resident information.
 
 Medicine: {medicine_name}
-Resident: {resident_name}
+Resident context: generic care-home resident (no personal details shared)
 
 Please provide the following information in JSON format:
 {{

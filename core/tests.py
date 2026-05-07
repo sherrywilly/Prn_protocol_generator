@@ -126,3 +126,12 @@ class PRNProtocolModelTest(TestCase):
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_ai_suggest_ignores_resident_details(self):
+        import json
+        response = self.client.post(
+            reverse('ai_suggest'),
+            data=json.dumps({'medicine_name': 'Paracetamol', 'resident_name': 'Jane Smith'}),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)

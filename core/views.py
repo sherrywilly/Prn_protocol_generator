@@ -138,10 +138,9 @@ def ai_suggest(request):
     try:
         data = json.loads(request.body)
         medicine_name = data.get('medicine_name', '').strip()
-        resident_name = data.get('resident_name', 'the resident').strip()
         if not medicine_name:
             return JsonResponse({'error': 'medicine_name is required'}, status=400)
-        suggestions = get_ai_protocol_suggestions(medicine_name, resident_name)
+        suggestions = get_ai_protocol_suggestions(medicine_name)
         return JsonResponse(suggestions)
     except Exception:
         logger.exception("Error in ai_suggest endpoint")
