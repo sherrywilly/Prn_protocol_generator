@@ -1,8 +1,11 @@
 import json
+import logging
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+
+logger = logging.getLogger(__name__)
 
 from .models import Resident, PRNProtocol
 from .forms import ResidentForm, PRNProtocolForm
@@ -140,5 +143,6 @@ def ai_suggest(request):
             return JsonResponse({'error': 'medicine_name is required'}, status=400)
         suggestions = get_ai_protocol_suggestions(medicine_name, resident_name)
         return JsonResponse(suggestions)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+    except Exception:
+        logger.exception("Error in ai_suggest endpoint")
+        return JsonResponse({'error': 'An unexpected error occurred. Please try again.'}, status=500)

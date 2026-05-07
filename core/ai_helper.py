@@ -1,5 +1,8 @@
 import os
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_ai_protocol_suggestions(medicine_name, resident_name="the resident"):
@@ -33,4 +36,5 @@ Be specific to the medication {medicine_name}. Use clinical but accessible langu
         )
         return json.loads(response.choices[0].message.content)
     except Exception:
+        logger.exception("AI suggestion failed for medicine: %s", medicine_name)
         return {}
