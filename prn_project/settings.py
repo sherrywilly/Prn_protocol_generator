@@ -6,11 +6,16 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-fallback-key-change-in-production')
-
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+_default_secret = 'django-insecure-fallback-key-change-in-production' if DEBUG else ''
+SECRET_KEY = os.environ.get('SECRET_KEY', _default_secret)
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable must be set in production (DEBUG=False).")
+
+# Restrict ALLOWED_HOSTS in production; allow all in development
+_allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = _allowed_hosts_env.split(',') if _allowed_hosts_env else (['*'] if DEBUG else [])
 
 INSTALLED_APPS = [
     'django.contrib.admin',
