@@ -82,6 +82,7 @@ class PRNProtocolModelTest(TestCase):
     def test_protocol_create_view_get(self):
         response = self.client.get(reverse('protocol_create', args=[self.resident.pk]))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Resident capacity can change.")
 
     def test_protocol_create_view_post(self):
         response = self.client.post(

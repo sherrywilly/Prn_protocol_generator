@@ -21,13 +21,14 @@ Resident context: generic care-home resident (no personal details shared)
 
 Please provide the following information in JSON format:
 {{
-  "capacity_statement": "A statement about whether the resident can request medication or if staff need to monitor for symptoms",
+  "capacity_statement": "A statement about whether the resident can request medication or if staff need to monitor for symptoms, including that capacity can change and should be reviewed regularly",
   "reason_for_administration": "Detailed description of the condition being treated, signs and symptoms, expected outcome",
   "special_instructions": ["instruction 1", "instruction 2", "instruction 3"],
   "additional_information": ["info 1", "info 2", "info 3"]
 }}
 
-Be specific to the medication {medicine_name}. Use clinical but accessible language appropriate for care home staff."""
+Be specific to the medication {medicine_name}. Use clinical but accessible language appropriate for care home staff.
+For capacity statements, include a brief reminder that resident capacity can change and should be reassessed regularly."""
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",

@@ -78,6 +78,7 @@
                 <label class="form-label fw-semibold">
                     Does the resident request medication / require prompting / require observing for symptoms? *
                 </label>
+                <small class="text-muted d-block mb-1">Resident capacity can change. Review and update this statement whenever the resident's status changes.</small>
                 {{ form.capacity_statement }}
                 {% if form.capacity_statement.errors %}<div class="text-danger small">{{ form.capacity_statement.errors }}</div>{% endif %}
             </div>
