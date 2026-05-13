@@ -456,7 +456,7 @@ def generate_resident_pdf(resident):
     except ImportError:
         return HttpResponse('WeasyPrint is not installed. Cannot generate PDF.', status=500)
 
-    html_string = render_to_string('core/resident_pdf.html', {'resident': resident})
+    html_string = render_to_string('core/resident_pdf.html', {'resident': resident, 'care_home_name': 'Welshwood Manor'})
     html = HTML(string=html_string, base_url='/')
     pdf = html.write_pdf()
 

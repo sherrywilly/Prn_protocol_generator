@@ -109,7 +109,11 @@ reviewer_required = portal_access_required(can_review_profiles)
 
 def _safe_next_url(request, fallback):
     candidate = request.GET.get('next') or request.POST.get('next')
-    if candidate and url_has_allowed_host_and_scheme(candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
         return candidate
     return fallback
 
