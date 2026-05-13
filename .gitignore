@@ -11,3 +11,4 @@ media/
 .venv/
 venv/
 env/
+env.example1
