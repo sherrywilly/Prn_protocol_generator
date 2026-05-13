@@ -6,6 +6,12 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+_database_path = os.environ.get('DATABASE_PATH', '').strip()
+if _database_path:
+    DB_FILE = Path(_database_path).expanduser()
+else:
+    DB_FILE = BASE_DIR / 'db.sqlite3'
+
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 _default_secret = 'django-insecure-fallback-key-change-in-production' if DEBUG else ''
@@ -60,7 +66,7 @@ WSGI_APPLICATION = 'prn_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': DB_FILE,
     }
 }
 

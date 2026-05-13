@@ -3,49 +3,222 @@
 {% block title %}{{ title }} - PRN Protocol Generator{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0"><i class="bi bi-person"></i> {{ title }}</h4>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Full Name</label>
-                        {{ form.name }}
-                        {% if form.name.errors %}
-                            <div class="text-danger small">{{ form.name.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Room Number</label>
-                        {{ form.room_number }}
-                        {% if form.room_number.errors %}
-                            <div class="text-danger small">{{ form.room_number.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Date of Birth</label>
-                        {{ form.date_of_birth }}
-                        {% if form.date_of_birth.errors %}
-                            <div class="text-danger small">{{ form.date_of_birth.errors }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-lg"></i> Save
-                        </button>
-                        {% if resident %}
-                        <a href="{% url 'resident_detail' resident.pk %}" class="btn btn-outline-secondary">Cancel</a>
-                        {% else %}
-                        <a href="{% url 'resident_list' %}" class="btn btn-outline-secondary">Cancel</a>
-                        {% endif %}
-                    </div>
-                </form>
-            </div>
+<div class="mb-3">
+    <a href="{% url 'resident_list' %}" class="text-decoration-none">
+        <i class="bi bi-arrow-left"></i> Back to Residents
+    </a>
+</div>
+
+<div class="card" style="border: 3px solid #28a745;">
+    <div class="card-header" style="background-color: #d4edda; border-bottom: 3px solid #28a745;">
+        <div>
+            <h4 class="mb-0" style="color: #155724;"><i class="bi bi-person"></i> {{ title }}</h4>
+            <small class="text-muted">Welshwood Manor - Resident Information</small>
         </div>
     </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- Personal Information Section -->
+            <div class="mb-4">
+                <h5 style="color: #155724; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                    <i class="bi bi-person-circle"></i> Personal Information
+                </h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="color: #155724;">Full Name *</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger small">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold" style="color: #155724;">Room Number *</label>
+                                    {{ form.room_number }}
+                                    {% if form.room_number.errors %}
+                                        <div class="text-danger small">{{ form.room_number.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold" style="color: #155724;">Date of Birth *</label>
+                                    {{ form.date_of_birth }}
+                                    {% if form.date_of_birth.errors %}
+                                        <div class="text-danger small">{{ form.date_of_birth.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="color: #155724;">NHS Number</label>
+                            {{ form.nhs_number }}
+                            {% if form.nhs_number.errors %}
+                                <div class="text-danger small">{{ form.nhs_number.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 text-center">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="color: #155724;">Resident Photo</label>
+                            {{ form.photo }}
+                            {% if form.photo.errors %}
+                                <div class="text-danger small">{{ form.photo.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-2">JPEG or PNG format</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color: #28a745;">
+
+            <!-- Next of Kin Section -->
+            <div class="mb-4">
+                <h5 style="color: #155724; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                    <i class="bi bi-people"></i> Next of Kin
+                </h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="color: #155724;">Name</label>
+                            {{ form.next_of_kin }}
+                            {% if form.next_of_kin.errors %}
+                                <div class="text-danger small">{{ form.next_of_kin.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="color: #155724;">Contact Number</label>
+                            {{ form.next_of_kin_contact }}
+                            {% if form.next_of_kin_contact.errors %}
+                                <div class="text-danger small">{{ form.next_of_kin_contact.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color: #28a745;">
+
+            <!-- GP Information Section -->
+            <div class="mb-4">
+                <h5 style="color: #155724; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                    <i class="bi bi-hospital"></i> General Practitioner
+                </h5>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="color: #155724;">GP Name</label>
+                            {{ form.gp_name }}
+                            {% if form.gp_name.errors %}
+                                <div class="text-danger small">{{ form.gp_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="color: #155724;">Surgery Name</label>
+                            {{ form.gp_surgery }}
+                            {% if form.gp_surgery.errors %}
+                                <div class="text-danger small">{{ form.gp_surgery.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="color: #155724;">GP Contact Number</label>
+                    {{ form.gp_contact }}
+                    {% if form.gp_contact.errors %}
+                        <div class="text-danger small">{{ form.gp_contact.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <hr style="border-color: #28a745;">
+
+            <!-- Health Information Section -->
+            <div class="mb-4">
+                <h5 style="color: #155724; border-bottom: 2px solid #28a745; padding-bottom: 8px;">
+                    <i class="bi bi-heart-pulse"></i> Health Information
+                </h5>
+                
+                <div class="mb-3 mt-3">
+                    <label class="form-label fw-semibold" style="color: #155724;">Mental Capacity Assessment</label>
+                    <small class="text-muted d-block mb-1">Record capacity assessment in line with Mental Capacity Act 2005</small>
+                    {{ form.mental_capacity }}
+                    {% if form.mental_capacity.errors %}
+                        <div class="text-danger small">{{ form.mental_capacity.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="color: #155724;">Medical Conditions & Allergies</label>
+                    <small class="text-muted d-block mb-1">List all relevant diagnoses, allergies, and medical conditions</small>
+                    {{ form.medical_conditions }}
+                    {% if form.medical_conditions.errors %}
+                        <div class="text-danger small">{{ form.medical_conditions.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="color: #155724;">Care Plan Last Reviewed</label>
+                    {{ form.care_plan_reviewed }}
+                    {% if form.care_plan_reviewed.errors %}
+                        <div class="text-danger small">{{ form.care_plan_reviewed.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <hr style="border-color: #28a745;">
+
+            <!-- Form Actions -->
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-lg" style="background-color: #28a745; border-color: #28a745; color: white;">
+                    <i class="bi bi-check-lg"></i> Save Resident
+                </button>
+                {% if resident %}
+                <a href="{% url 'resident_detail' resident.pk %}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                {% else %}
+                <a href="{% url 'resident_list' %}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                {% endif %}
+            </div>
+
+            <!-- CQC Compliance Notice -->
+            <div class="alert mt-4" style="background-color: #f0f7f2; border-left: 4px solid #28a745; color: #155724;">
+                <small><strong>CQC Compliance:</strong> Information collected in accordance with Health and Social Care Act 2008 (Regulated Activities) Regulations 2014. All resident data is handled in accordance with GDPR and Data Protection Act 2018.</small>
+            </div>
+        </form>
+    </div>
 </div>
+
+<style>
+    .form-control {
+        border: 1px solid #28a745 !important;
+    }
+    .form-control:focus {
+        border-color: #28a745 !important;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+    }
+    .btn-primary {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+    .btn-primary:hover {
+        background-color: #218838;
+        border-color: #218838;
+    }
+</style>
 {% endblock %}

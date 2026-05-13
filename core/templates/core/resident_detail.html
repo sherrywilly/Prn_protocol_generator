@@ -33,6 +33,20 @@
                 <strong>Added:</strong> {{ resident.created_at|date:"d/m/Y" }}
             </div>
         </div>
+        {% if resident.mental_capacity %}
+        <hr>
+        <div>
+            <strong>Mental Capacity:</strong>
+            <div class="mt-1">{{ resident.mental_capacity|linebreaksbr }}</div>
+        </div>
+        {% endif %}
+        {% if resident.medical_conditions %}
+        <hr>
+        <div>
+            <strong>Medical Conditions:</strong>
+            <div class="mt-1">{{ resident.medical_conditions|linebreaksbr }}</div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -71,6 +85,9 @@
                         </a>
                         <a href="{% url 'protocol_pdf' protocol.pk %}" class="btn btn-sm btn-outline-success">
                             <i class="bi bi-file-pdf"></i> PDF
+                        </a>
+                        <a href="{% url 'protocol_docx' protocol.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-file-earmark-word"></i> DOCX
                         </a>
                         <a href="{% url 'protocol_edit' protocol.pk %}" class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-pencil"></i> Edit
