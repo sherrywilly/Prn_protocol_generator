@@ -1,0 +1,114 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ resident.name }} - PRN Protocol Generator{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'resident_list' %}" class="text-decoration-none">
+        <i class="bi bi-arrow-left"></i> Back to Residents
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h4 class="mb-0"><i class="bi bi-person-circle"></i> {{ resident.name }}</h4>
+        <div>
+            <a href="{% url 'resident_edit' resident.pk %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <a href="{% url 'resident_delete' resident.pk %}" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash"></i> Delete
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Room Number:</strong> {{ resident.room_number }}
+            </div>
+            <div class="col-md-4">
+                <strong>Date of Birth:</strong> {{ resident.date_of_birth|date:"d/m/Y" }}
+            </div>
+            <div class="col-md-4">
+                <strong>Added:</strong> {{ resident.created_at|date:"d/m/Y" }}
+            </div>
+        </div>
+        {% if resident.mental_capacity %}
+        <hr>
+        <div>
+            <strong>Mental Capacity:</strong>
+            <div class="mt-1">{{ resident.mental_capacity|linebreaksbr }}</div>
+        </div>
+        {% endif %}
+        {% if resident.medical_conditions %}
+        <hr>
+        <div>
+            <strong>Medical Conditions:</strong>
+            <div class="mt-1">{{ resident.medical_conditions|linebreaksbr }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5><i class="bi bi-clipboard2-pulse"></i> PRN Protocols ({{ protocols.count }})</h5>
+    <a href="{% url 'protocol_create' resident.pk %}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Add PRN Protocol
+    </a>
+</div>
+
+{% if protocols %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Form</th>
+                    <th>Strength</th>
+                    <th>Route</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for protocol in protocols %}
+                <tr>
+                    <td><strong>{{ protocol.medicine_name }}</strong></td>
+                    <td>{{ protocol.form }}</td>
+                    <td>{{ protocol.strength }}</td>
+                    <td>{{ protocol.route_of_administration }}</td>
+                    <td>{{ protocol.created_at|date:"d/m/Y" }}</td>
+                    <td>
+                        <a href="{% url 'protocol_detail' protocol.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                        <a href="{% url 'protocol_pdf' protocol.pk %}" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-file-pdf"></i> PDF
+                        </a>
+                        <a href="{% url 'protocol_docx' protocol.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-file-earmark-word"></i> DOCX
+                        </a>
+                        <a href="{% url 'protocol_edit' protocol.pk %}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <a href="{% url 'protocol_delete' protocol.pk %}" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i> Delete
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-4">
+        <i class="bi bi-clipboard2 display-5 text-muted"></i>
+        <p class="mt-2 text-muted">No protocols added for this resident yet.</p>
+        <a href="{% url 'protocol_create' resident.pk %}" class="btn btn-success">Add First Protocol</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
