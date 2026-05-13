@@ -1,0 +1,38 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Secure login - MAR Resident Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-lg-5 col-md-7">
+        <div class="card p-4">
+            <div class="text-center mb-4">
+                <span class="badge badge-soft px-3 py-2 mb-3">Secure access</span>
+                <h1 class="h3 mb-2">Sign in to the MAR portal</h1>
+                <p class="text-muted mb-0">Role-based access, audit logging, and staff approval are required for all resident records.</p>
+            </div>
+            <form method="post" action="{% url 'login_submit' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.GET.next }}">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Username</label>
+                    {{ form.username }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Password</label>
+                    {{ form.password }}
+                </div>
+                <button type="submit" class="btn btn-portal w-100">
+                    <i class="bi bi-shield-lock"></i> Sign in
+                </button>
+            </form>
+            <div class="alert alert-light border mt-4 mb-0">
+                <small><strong>Data handling:</strong> only authorised users with assigned portal roles can access MAR resident profiles. AI-generated text is always labelled and requires staff approval before saving.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

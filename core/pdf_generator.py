@@ -437,3 +437,95 @@ def generate_protocol_docx(protocol):
     filename = _build_export_filename(protocol, 'docx')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+def _build_resident_export_filename(resident, extension):
+    safe_resident = resident.name.replace(' ', '_')
+    return f"MAR_Resident_Profile_{safe_resident}.{extension}"
+
+
+
+def _split_lines(value):
+    return [line.strip() for line in str(value or '').splitlines() if line.strip()] or ['—']
+
+
+
+def generate_resident_pdf(resident):
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        return HttpResponse('WeasyPrint is not installed. Cannot generate PDF.', status=500)
+
+    html_string = render_to_string('core/resident_pdf.html', {'resident': resident})
+    html = HTML(string=html_string, base_url='/')
+    pdf = html.write_pdf()
+
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{_build_resident_export_filename(resident, "pdf")}"'
+    return response
+
+
+
+def generate_resident_docx(resident):
+    if Document is None:
+        return HttpResponse('python-docx is not installed. Cannot generate DOCX.', status=500)
+
+    document = Document()
+    _set_document_defaults(document)
+
+    heading = document.add_paragraph()
+    _set_paragraph_spacing(heading, after=10, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    _add_paragraph_bottom_border(heading)
+    run = heading.add_run('MAR RESIDENT PROFILE')
+    run.bold = True
+    run.font.name = 'Arial'
+    run.font.size = Pt(16)
+
+    _add_field_row(
+        document,
+        [
+            {'label': "Resident's Name", 'value': resident.name, 'ratio': 2},
+            {'label': 'Room No.', 'value': resident.room_number, 'ratio': 1},
+            {'label': 'Date of Birth', 'value': _format_date(resident.date_of_birth), 'ratio': 1},
+        ],
+        row_height_cm=1.05,
+    )
+    _add_field_row(
+        document,
+        [
+            {'label': 'NHS Number', 'value': resident.nhs_number or '—', 'ratio': 1},
+            {'label': 'Review status', 'value': resident.get_review_status_display(), 'ratio': 1},
+            {'label': 'Care plan reviewed', 'value': _format_date(resident.care_plan_reviewed), 'ratio': 1},
+        ],
+        row_height_cm=1.0,
+    )
+    _add_field_row(
+        document,
+        [
+            {'label': 'GP', 'value': resident.gp_name or '—', 'ratio': 1},
+            {'label': 'Pharmacy', 'value': resident.pharmacy_name or '—', 'ratio': 1},
+            {'label': 'Emergency contact', 'value': resident.emergency_contact_name or '—', 'ratio': 1},
+        ],
+        row_height_cm=1.0,
+    )
+
+    _add_section_box(document, 'Mental capacity', _split_lines(resident.mental_capacity), min_height_cm=1.5)
+    _add_section_box(document, 'Medical conditions', _split_lines(resident.medical_conditions), min_height_cm=1.8)
+    _add_section_box(document, 'Allergies', resident.get_allergies_list() or ['—'], bullets=bool(resident.get_allergies_list()), min_height_cm=1.5)
+    _add_section_box(document, 'Medication alerts', resident.get_medication_alerts_list() or ['—'], bullets=bool(resident.get_medication_alerts_list()), min_height_cm=1.5)
+    _add_section_box(document, 'Monitoring requirements', resident.get_monitoring_requirements_list() or ['—'], bullets=bool(resident.get_monitoring_requirements_list()), min_height_cm=1.7)
+    _add_section_box(document, 'Administration preferences', resident.get_administration_preferences_list() or ['—'], bullets=bool(resident.get_administration_preferences_list()), min_height_cm=1.7)
+    _add_section_box(document, 'Legal / safeguarding information', resident.get_legal_safeguarding_information_list() or ['—'], bullets=bool(resident.get_legal_safeguarding_information_list()), min_height_cm=1.7)
+    _add_section_box(document, 'Care summary', _split_lines(resident.care_summary), min_height_cm=1.8)
+    _add_section_box(document, 'MAR front-page text', _split_lines(resident.mar_front_page_text), min_height_cm=2.2)
+
+    buffer = BytesIO()
+    document.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{_build_resident_export_filename(resident, "docx")}"'
+    return response

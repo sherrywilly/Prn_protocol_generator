@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Print - {{ resident.name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
+        h1, h2 { margin-bottom: 8px; }
+        .meta, .section { margin-bottom: 18px; }
+        .section h2 { font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        @media print { .no-print { display: none; } body { margin: 0.5cm; } }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="margin-bottom: 16px;"><button onclick="window.print()">Print</button></div>
+    <h1>MAR Resident Profile</h1>
+    <div class="meta"><strong>{{ care_home_name }}</strong><br>{{ resident.name }} · Room {{ resident.room_number }} · DOB {{ resident.date_of_birth|date:"d/m/Y" }}</div>
+    <div class="two-col">
+        <div class="section"><h2>Care summary</h2>{{ resident.care_summary|linebreaksbr|default:'Not recorded' }}</div>
+        <div class="section"><h2>MAR front-page text</h2>{{ resident.mar_front_page_text|linebreaksbr|default:'Not recorded' }}</div>
+        <div class="section"><h2>Medical conditions</h2>{{ resident.medical_conditions|linebreaksbr|default:'Not recorded' }}</div>
+        <div class="section"><h2>Allergies and medication alerts</h2>{{ resident.allergies|linebreaksbr|default:'Not recorded' }}<hr>{{ resident.medication_alerts|linebreaksbr|default:'Not recorded' }}</div>
+        <div class="section"><h2>Monitoring requirements</h2>{{ resident.monitoring_requirements|linebreaksbr|default:'Not recorded' }}</div>
+        <div class="section"><h2>Legal / safeguarding information</h2>{{ resident.legal_safeguarding_information|linebreaksbr|default:'Not recorded' }}</div>
+    </div>
+</body>
+</html>

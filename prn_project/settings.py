@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,9 +18,8 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 _default_secret = 'django-insecure-fallback-key-change-in-production' if DEBUG else ''
 SECRET_KEY = os.environ.get('SECRET_KEY', _default_secret)
 if not SECRET_KEY:
-    raise ValueError("SECRET_KEY environment variable must be set in production (DEBUG=False).")
+    raise ValueError('SECRET_KEY environment variable must be set in production (DEBUG=False).')
 
-# Restrict ALLOWED_HOSTS in production; allow all in development
 _allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = _allowed_hosts_env.split(',') if _allowed_hosts_env else (['*'] if DEBUG else [])
 
@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',
+    'core.apps.CoreConfig',
 ]
 
 MIDDLEWARE = [
@@ -87,5 +87,20 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'resident_list'
+LOGOUT_REDIRECT_URL = 'login'
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+X_FRAME_OPTIONS = 'DENY'
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = not DEBUG and os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True'
+SECURE_HSTS_SECONDS = 3600 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

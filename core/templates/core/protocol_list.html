@@ -1,13 +1,39 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Protocols for {{ resident.name }}{% endblock %}
+{% block title %}PRN protocols for {{ resident.name }}{% endblock %}
 
 {% block content %}
-<div class="mb-3">
-    <a href="{% url 'resident_detail' resident.pk %}" class="text-decoration-none">
-        <i class="bi bi-arrow-left"></i> Back to {{ resident.name }}
-    </a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'resident_detail' resident.pk %}" class="text-decoration-none"><i class="bi bi-arrow-left"></i> Back to resident profile</a>
+        <h1 class="h3 mt-2 mb-1">PRN protocols for {{ resident.name }}</h1>
+        <p class="text-muted mb-0">{{ care_home_name }}</p>
+    </div>
+    <a href="{% url 'protocol_create' resident.pk %}" class="btn btn-portal"><i class="bi bi-plus-circle"></i> Add protocol</a>
 </div>
-<h2>Protocols for {{ resident.name }}</h2>
-{% include 'core/resident_detail.html' %}
+
+<div class="card">
+    <div class="card-body">
+        {% if protocols %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead><tr><th>Medicine</th><th>Form</th><th>Strength</th><th>Route</th><th>Actions</th></tr></thead>
+                <tbody>
+                    {% for protocol in protocols %}
+                    <tr>
+                        <td>{{ protocol.medicine_name }}</td>
+                        <td>{{ protocol.form }}</td>
+                        <td>{{ protocol.strength }}</td>
+                        <td>{{ protocol.route_of_administration }}</td>
+                        <td><a href="{% url 'protocol_detail' protocol.pk %}" class="btn btn-sm btn-outline-primary">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p class="text-muted mb-0">No PRN protocols recorded.</p>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}

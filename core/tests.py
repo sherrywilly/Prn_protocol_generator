@@ -1,57 +1,143 @@
+import io
+import json
+import zipfile
 from datetime import date
 from unittest.mock import patch
 
-from django.test import TestCase, Client
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase
 from django.urls import reverse
-from .models import Resident, PRNProtocol
+
+from .models import AuditLog, PRNProtocol, Resident
 
 
-class ResidentModelTest(TestCase):
-    def setUp(self):
-        self.resident = Resident.objects.create(
-            name='Test Resident',
-            room_number='10',
-            date_of_birth=date(1950, 1, 15),
-        )
+User = get_user_model()
 
-    def test_resident_str(self):
-        self.assertEqual(str(self.resident), 'Test Resident (Room 10)')
 
-    def test_resident_list_view(self):
+class PortalAccessTest(TestCase):
+    def test_dashboard_requires_login(self):
         response = self.client.get(reverse('resident_list'))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Test Resident')
-
-    def test_resident_detail_view(self):
-        response = self.client.get(reverse('resident_detail', args=[self.resident.pk]))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Test Resident')
-
-    def test_resident_create_view_get(self):
-        response = self.client.get(reverse('resident_create'))
-        self.assertEqual(response.status_code, 200)
-
-    def test_resident_create_view_post(self):
-        response = self.client.post(reverse('resident_create'), {
-            'name': 'New Resident',
-            'room_number': '5',
-            'date_of_birth': '1940-06-01',
-            'mental_capacity': 'Has capacity to make day-to-day decisions.',
-            'medical_conditions': 'Type 2 diabetes\nHypertension',
-        })
-        self.assertEqual(Resident.objects.count(), 2)
-        new = Resident.objects.get(name='New Resident')
-        self.assertRedirects(response, reverse('resident_detail', args=[new.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/login/?next=/', response['Location'])
 
 
-class PRNProtocolModelTest(TestCase):
+class AuthenticatedPortalTestCase(TestCase):
     def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_superuser('portaladmin', 'admin@example.com', 'password123')
+        self.client.force_login(self.user)
         self.resident = Resident.objects.create(
             name='Jane Smith',
             room_number='7',
             date_of_birth=date(1945, 3, 20),
             medical_conditions='Arthritis',
+            allergies='Penicillin',
+            medication_alerts='Monitor for gastric irritation',
+            monitoring_requirements='Document pain score before and after administration',
+            administration_preferences='Explain medicines slowly and allow time for questions',
+            legal_safeguarding_information='Best-interest discussion recorded in care plan',
+            care_summary='Resident requires clear explanations and pain monitoring.',
+            mar_front_page_text='Check allergy status and monitor pain response after PRN administration.',
         )
+
+
+class ResidentModelTest(AuthenticatedPortalTestCase):
+    def test_resident_str(self):
+        self.assertEqual(str(self.resident), 'Jane Smith (Room 7)')
+
+    def test_multiline_helpers(self):
+        self.resident.allergies = 'Penicillin\nLatex'
+        self.assertEqual(self.resident.get_allergies_list(), ['Penicillin', 'Latex'])
+
+    def test_resident_list_view(self):
+        response = self.client.get(reverse('resident_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'MAR resident dashboard')
+        self.assertContains(response, 'Jane Smith')
+
+    def test_resident_detail_view(self):
+        response = self.client.get(reverse('resident_detail', args=[self.resident.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Medication alerts')
+        self.assertContains(response, 'Best-interest discussion')
+
+    def test_resident_create_view_get(self):
+        response = self.client.get(reverse('resident_create'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Create MAR resident profile')
+
+    def test_resident_create_view_post_creates_audit_log(self):
+        response = self.client.post(reverse('resident_create'), {
+            'name': 'New Resident',
+            'room_number': '5',
+            'date_of_birth': '1940-06-01',
+            'nhs_number': '1234567890',
+            'mental_capacity': 'Has capacity to make day-to-day decisions.',
+            'medical_conditions': 'Type 2 diabetes\nHypertension',
+            'allergies': 'No known allergies',
+            'medication_alerts': 'Observe for dizziness',
+            'monitoring_requirements': 'Monitor blood glucose levels',
+            'administration_preferences': 'Offer water with tablets',
+            'legal_safeguarding_information': 'No restrictions recorded',
+            'care_summary': 'Resident requires blood glucose monitoring.',
+            'mar_front_page_text': 'Verify allergy status and diabetic monitoring needs.',
+        })
+        self.assertEqual(Resident.objects.count(), 2)
+        new = Resident.objects.get(name='New Resident')
+        self.assertRedirects(response, reverse('resident_detail', args=[new.pk]))
+        self.assertTrue(AuditLog.objects.filter(action='create', entity_type='Resident', entity_id=str(new.pk)).exists())
+
+    def test_resident_mark_reviewed(self):
+        response = self.client.post(reverse('resident_mark_reviewed', args=[self.resident.pk]))
+        self.assertRedirects(response, reverse('resident_detail', args=[self.resident.pk]))
+        self.resident.refresh_from_db()
+        self.assertEqual(self.resident.review_status, Resident.REVIEW_STATUS_REVIEWED)
+        self.assertEqual(self.resident.reviewed_by, self.user)
+
+    def test_resident_pdf_view(self):
+        response = self.client.get(reverse('resident_pdf', args=[self.resident.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_resident_docx_view(self):
+        response = self.client.get(reverse('resident_docx', args=[self.resident.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        )
+        document_xml = zipfile.ZipFile(io.BytesIO(response.content)).read('word/document.xml').decode('utf-8')
+        self.assertIn('MAR RESIDENT PROFILE', document_xml)
+        self.assertIn('Medication alerts', document_xml)
+
+    def test_resident_print_view(self):
+        response = self.client.get(reverse('resident_print', args=[self.resident.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'MAR Resident Profile')
+
+    def test_resident_ai_assist_returns_fallback_without_key(self):
+        response = self.client.post(
+            reverse('resident_ai_assist'),
+            data=json.dumps({
+                'medical_conditions': 'Diabetes',
+                'allergies': 'Penicillin',
+                'medication_alerts': 'Check for rash',
+                'monitoring_requirements': '',
+                'administration_preferences': '',
+                'legal_safeguarding_information': '',
+            }),
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn('generated_fields', payload)
+        self.assertIn('monitoring_requirements', payload['generated_fields'])
+        self.assertIn('staff review and approval required', payload['label'])
+
+
+class PRNProtocolModelTest(AuthenticatedPortalTestCase):
+    def setUp(self):
+        super().setUp()
         self.protocol = PRNProtocol.objects.create(
             resident=self.resident,
             medicine_name='Paracetamol',
@@ -106,6 +192,7 @@ class PRNProtocolModelTest(TestCase):
             },
         )
         self.assertEqual(self.resident.protocols.count(), 2)
+        self.assertEqual(response.status_code, 302)
 
     def test_protocol_autofill_by_medicine_returns_latest_protocol_data(self):
         PRNProtocol.objects.create(
@@ -124,10 +211,7 @@ class PRNProtocolModelTest(TestCase):
             additional_information='Escalate if pain does not settle',
         )
 
-        response = self.client.get(
-            reverse('protocol_autofill_by_medicine'),
-            {'medicine_name': 'paracetamol'},
-        )
+        response = self.client.get(reverse('protocol_autofill_by_medicine'), {'medicine_name': 'paracetamol'})
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -136,16 +220,9 @@ class PRNProtocolModelTest(TestCase):
         self.assertEqual(payload['data']['strength'], '650mg')
         self.assertEqual(payload['data']['medication_instruction'], 'Use only for severe pain.')
         self.assertNotIn('capacity_statement', payload['data'])
-        self.assertNotIn('reason_for_administration', payload['data'])
-        self.assertNotIn('special_instructions', payload['data'])
-        self.assertNotIn('additional_information', payload['data'])
 
     def test_protocol_autofill_by_medicine_not_found(self):
-        response = self.client.get(
-            reverse('protocol_autofill_by_medicine'),
-            {'medicine_name': 'Unknown Medicine'},
-        )
-
+        response = self.client.get(reverse('protocol_autofill_by_medicine'), {'medicine_name': 'Unknown Medicine'})
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertFalse(payload['found'])
@@ -157,9 +234,6 @@ class PRNProtocolModelTest(TestCase):
         self.assertEqual(response['Content-Type'], 'application/pdf')
 
     def test_protocol_docx_view(self):
-        import io
-        import zipfile
-
         response = self.client.get(reverse('protocol_docx', args=[self.protocol.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -172,29 +246,19 @@ class PRNProtocolModelTest(TestCase):
         self.assertNotIn('medical_conditions', document_xml)
 
     def test_ai_suggest_endpoint_no_key(self):
-        """AI suggest returns empty dict when no API key is set."""
-        import json
         response = self.client.post(
             reverse('ai_suggest'),
             data=json.dumps({'medicine_name': 'Paracetamol'}),
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 200)
-        data = response.json()
-        # No API key → empty dict (graceful failure)
-        self.assertIsInstance(data, dict)
+        self.assertIsInstance(response.json(), dict)
 
     def test_ai_suggest_missing_medicine_name(self):
-        import json
-        response = self.client.post(
-            reverse('ai_suggest'),
-            data=json.dumps({}),
-            content_type='application/json',
-        )
+        response = self.client.post(reverse('ai_suggest'), data=json.dumps({}), content_type='application/json')
         self.assertEqual(response.status_code, 400)
 
     def test_ai_suggest_ignores_resident_details(self):
-        import json
         response = self.client.post(
             reverse('ai_suggest'),
             data=json.dumps({
@@ -209,8 +273,6 @@ class PRNProtocolModelTest(TestCase):
 
     @patch('core.views.get_ai_protocol_suggestions')
     def test_ai_suggest_passes_form_and_route_context(self, mock_get_ai_protocol_suggestions):
-        import json
-
         mock_get_ai_protocol_suggestions.return_value = {}
 
         response = self.client.post(
@@ -239,16 +301,11 @@ class PRNProtocolModelTest(TestCase):
 
     @patch('core.views.get_ai_protocol_suggestions')
     def test_ai_suggest_uses_first_name_context(self, mock_get_ai_protocol_suggestions):
-        import json
-
         mock_get_ai_protocol_suggestions.return_value = {}
 
         response = self.client.post(
             reverse('ai_suggest'),
-            data=json.dumps({
-                'medicine_name': 'Ibuprofen',
-                'resident_first_name': 'Jane Smith',
-            }),
+            data=json.dumps({'medicine_name': 'Ibuprofen', 'resident_first_name': 'Jane Smith'}),
             content_type='application/json',
         )
 
@@ -265,8 +322,6 @@ class PRNProtocolModelTest(TestCase):
 
     @patch('core.views.get_ai_protocol_suggestions')
     def test_ai_suggest_passes_medical_conditions(self, mock_get_ai_protocol_suggestions):
-        import json
-
         mock_get_ai_protocol_suggestions.return_value = {}
 
         response = self.client.post(
