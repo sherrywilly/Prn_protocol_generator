@@ -8,6 +8,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.http import JsonResponse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -88,7 +89,8 @@ def portal_access_required(check):
         @wraps(view_func)
         def _wrapped(request, *args, **kwargs):
             if not request.user.is_authenticated:
-                return redirect(f"/login/?next={request.get_full_path()}")
+                request.session['post_login_next'] = request.get_full_path()
+                return redirect('login')
             if not check(request.user):
                 raise PermissionDenied('You do not have permission to access this part of the portal.')
             return view_func(request, *args, **kwargs)
@@ -102,6 +104,14 @@ viewer_required = portal_access_required(can_view_portal)
 editor_required = portal_access_required(can_edit_portal)
 reviewer_required = portal_access_required(can_review_profiles)
 
+
+
+
+def _safe_next_url(request, fallback):
+    candidate = request.GET.get('next') or request.POST.get('next')
+    if candidate and url_has_allowed_host_and_scheme(candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return candidate
+    return fallback
 
 def log_audit_event(action, description, user=None, target=None, resident=None, metadata=None):
     resident = resident or getattr(target, 'resident', None) or (target if isinstance(target, Resident) else None)
@@ -138,7 +148,8 @@ def login_submit(request):
         else:
             auth_login(request, user)
             log_audit_event('login', 'User logged into the MAR portal.', user=user)
-            return redirect(request.POST.get('next') or 'resident_list')
+            fallback = request.session.pop('post_login_next', None) or '/'
+            return redirect(_safe_next_url(request, fallback))
     return render(request, 'registration/login.html', {'form': form}, status=400)
 
 

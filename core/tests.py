@@ -18,7 +18,7 @@ class PortalAccessTest(TestCase):
     def test_dashboard_requires_login(self):
         response = self.client.get(reverse('resident_list'))
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/login/?next=/', response['Location'])
+        self.assertEqual(response['Location'], reverse('login'))
 
 
 class AuthenticatedPortalTestCase(TestCase):
