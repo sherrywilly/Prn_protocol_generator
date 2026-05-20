@@ -449,6 +449,44 @@ def _split_lines(value):
     return [line.strip() for line in str(value or '').splitlines() if line.strip()] or ['—']
 
 
+def _first_line(value, default='—'):
+    lines = _split_lines(value)
+    return lines[0] if lines else default
+
+
+def _bool_indicator(value):
+    return 'YES' if value else 'NO'
+
+
+def _add_resident_panel(document, title, lines, fill='F7FAF8'):
+    title_paragraph = document.add_paragraph()
+    _set_paragraph_spacing(title_paragraph, before=2, after=2)
+    title_run = title_paragraph.add_run(title)
+    title_run.bold = True
+    title_run.font.name = 'Arial'
+    title_run.font.size = Pt(10)
+    title_run.font.color.rgb = RGBColor(0x2D, 0x43, 0x3E)
+
+    panel = document.add_table(rows=1, cols=1)
+    _set_table_layout(panel)
+    cell = panel.cell(0, 0)
+    _clear_cell(cell)
+    _set_cell_border(cell, color='D8E0DD')
+    _set_cell_margins(cell, top=120, start=140, bottom=120, end=140)
+    _set_cell_shading(cell, fill)
+
+    first = cell.paragraphs[0]
+    _set_paragraph_spacing(first)
+    for idx, line in enumerate(lines):
+        paragraph = first if idx == 0 else cell.add_paragraph()
+        _set_paragraph_spacing(paragraph, after=1)
+        run = paragraph.add_run(line or '—')
+        run.font.name = 'Arial'
+        run.font.size = Pt(9.5)
+
+    spacer = document.add_paragraph()
+    _set_paragraph_spacing(spacer, after=1)
+
 
 def generate_resident_pdf(resident):
     try:
@@ -474,50 +512,82 @@ def generate_resident_docx(resident):
     _set_document_defaults(document)
 
     heading = document.add_paragraph()
-    _set_paragraph_spacing(heading, after=10, alignment=WD_ALIGN_PARAGRAPH.CENTER)
-    _add_paragraph_bottom_border(heading)
-    run = heading.add_run('MAR RESIDENT PROFILE')
-    run.bold = True
-    run.font.name = 'Arial'
-    run.font.size = Pt(16)
+    _set_paragraph_spacing(heading, after=2, alignment=WD_ALIGN_PARAGRAPH.LEFT)
+    title = heading.add_run('MAR RESIDENT PROFILE')
+    title.bold = True
+    title.font.name = 'Arial'
+    title.font.size = Pt(9)
+    title.font.color.rgb = RGBColor(0x73, 0x84, 0x7E)
+
+    name_line = document.add_paragraph()
+    _set_paragraph_spacing(name_line, after=8, alignment=WD_ALIGN_PARAGRAPH.LEFT)
+    resident_name = name_line.add_run(resident.name)
+    resident_name.bold = True
+    resident_name.font.name = 'Arial'
+    resident_name.font.size = Pt(20)
+    resident_name.font.color.rgb = RGBColor(0x1F, 0x5C, 0x4F)
 
     _add_field_row(
         document,
         [
-            {'label': "Resident's Name", 'value': resident.name, 'ratio': 2},
-            {'label': 'Room No.', 'value': resident.room_number, 'ratio': 1},
-            {'label': 'Date of Birth', 'value': _format_date(resident.date_of_birth), 'ratio': 1},
-        ],
-        row_height_cm=1.05,
-    )
-    _add_field_row(
-        document,
-        [
-            {'label': 'NHS Number', 'value': resident.nhs_number or '—', 'ratio': 1},
+            {'label': 'Suite', 'value': resident.room_number or '—', 'ratio': 1},
+            {'label': 'NHS number', 'value': resident.nhs_number or '—', 'ratio': 1},
+            {'label': 'DOB', 'value': _format_date(resident.date_of_birth), 'ratio': 1},
             {'label': 'Review status', 'value': resident.get_review_status_display(), 'ratio': 1},
-            {'label': 'Care plan reviewed', 'value': _format_date(resident.care_plan_reviewed), 'ratio': 1},
         ],
-        row_height_cm=1.0,
-    )
-    _add_field_row(
-        document,
-        [
-            {'label': 'GP', 'value': resident.gp_name or '—', 'ratio': 1},
-            {'label': 'Pharmacy', 'value': resident.pharmacy_name or '—', 'ratio': 1},
-            {'label': 'Emergency contact', 'value': resident.emergency_contact_name or '—', 'ratio': 1},
-        ],
-        row_height_cm=1.0,
+        row_height_cm=0.95,
     )
 
-    _add_section_box(document, 'Mental capacity', _split_lines(resident.mental_capacity), min_height_cm=1.5)
-    _add_section_box(document, 'Medical conditions', _split_lines(resident.medical_conditions), min_height_cm=1.8)
-    _add_section_box(document, 'Allergies', resident.get_allergies_list() or ['—'], bullets=bool(resident.get_allergies_list()), min_height_cm=1.5)
-    _add_section_box(document, 'Medication alerts', resident.get_medication_alerts_list() or ['—'], bullets=bool(resident.get_medication_alerts_list()), min_height_cm=1.5)
-    _add_section_box(document, 'Monitoring requirements', resident.get_monitoring_requirements_list() or ['—'], bullets=bool(resident.get_monitoring_requirements_list()), min_height_cm=1.7)
-    _add_section_box(document, 'Administration preferences', resident.get_administration_preferences_list() or ['—'], bullets=bool(resident.get_administration_preferences_list()), min_height_cm=1.7)
-    _add_section_box(document, 'Legal / safeguarding information', resident.get_legal_safeguarding_information_list() or ['—'], bullets=bool(resident.get_legal_safeguarding_information_list()), min_height_cm=1.7)
-    _add_section_box(document, 'Care summary', _split_lines(resident.care_summary), min_height_cm=1.8)
-    _add_section_box(document, 'MAR front-page text', _split_lines(resident.mar_front_page_text), min_height_cm=2.2)
+    _add_resident_panel(
+        document,
+        'Critical Medical Alerts',
+        [
+            f'Diagnosed: {_first_line(resident.medical_conditions)}',
+            f'High-alert med: {_first_line(resident.medication_alerts)}',
+            f'Allergies: {_first_line(resident.allergies)}',
+            'Medication alerts',
+            '\n'.join(resident.get_medication_alerts_list()[:3]) or '—',
+        ],
+        fill='FFF7F7',
+    )
+    _add_resident_panel(
+        document,
+        'Legal & Safety',
+        [
+            f'MCA in place: {_bool_indicator(bool((resident.mental_capacity or "").strip()))}',
+            f'DNACPR in place: {_bool_indicator("dnacpr" in (resident.legal_safeguarding_information or "").lower())}',
+            f'Legal note: {_first_line(resident.legal_safeguarding_information)}',
+        ],
+        fill='F4F8F6',
+    )
+    _add_resident_panel(
+        document,
+        'Medication Protocol',
+        [
+            f'Vital signs required: {_first_line(resident.monitoring_requirements)}',
+            f'Administration route notes: {_first_line(resident.mar_front_page_text)}',
+            f'Resident preferences: {_first_line(resident.administration_preferences)}',
+        ],
+    )
+    _add_resident_panel(
+        document,
+        'Key Contacts',
+        [
+            f'GP surgery: {resident.gp_name or "Not recorded"} {f"({resident.gp_contact})" if resident.gp_contact else ""}'.strip(),
+            f'Pharmacy: {resident.pharmacy_name or "Not recorded"} {f"({resident.pharmacy_contact})" if resident.pharmacy_contact else ""}'.strip(),
+            f'Next of kin: {resident.next_of_kin or "Not recorded"} {f"({resident.next_of_kin_contact})" if resident.next_of_kin_contact else ""}'.strip(),
+            f'Emergency: {resident.emergency_contact_name or "Not recorded"} {f"({resident.emergency_contact_phone})" if resident.emergency_contact_phone else ""}'.strip(),
+        ],
+    )
+    _add_resident_panel(
+        document,
+        'Nutritional Status',
+        [
+            f'PEG status: {"YES" if "peg" in (resident.medical_conditions or "").lower() else "N/A (Oral)"}',
+            f'Dietary requirements: {_first_line(resident.care_summary)}',
+        ],
+        fill='F4F8F6',
+    )
 
     buffer = BytesIO()
     document.save(buffer)

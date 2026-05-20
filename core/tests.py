@@ -109,6 +109,8 @@ class ResidentModelTest(AuthenticatedPortalTestCase):
         document_xml = zipfile.ZipFile(io.BytesIO(response.content)).read('word/document.xml').decode('utf-8')
         self.assertIn('MAR RESIDENT PROFILE', document_xml)
         self.assertIn('Medication alerts', document_xml)
+        self.assertIn('Critical Medical Alerts', document_xml)
+        self.assertIn('Key Contacts', document_xml)
 
     def test_resident_print_view(self):
         response = self.client.get(reverse('resident_print', args=[self.resident.pk]))
