@@ -4,25 +4,247 @@
     <meta charset="UTF-8">
     <title>Print - {{ resident.name }}</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
-        h1, h2 { margin-bottom: 8px; }
-        .meta, .section { margin-bottom: 18px; }
-        .section h2 { font-size: 15px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-        @media print { .no-print { display: none; } body { margin: 0.5cm; } }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 18px;
+            color: #223531;
+            background: #f6f9f7;
+        }
+        .no-print { margin-bottom: 16px; }
+        .print-shell {
+            max-width: 980px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #dbe6de;
+            border-radius: 18px;
+            padding: 24px 28px;
+            box-shadow: 0 8px 24px rgba(31, 92, 79, 0.08);
+        }
+        .title-bar {
+            background: linear-gradient(90deg, #e3f0e8 0%, #d0e6f7 100%);
+            color: #1f5c4f;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            border-radius: 12px;
+            padding: 10px 14px;
+            text-transform: uppercase;
+        }
+        .sub-title {
+            text-align: center;
+            font-size: 13px;
+            color: #3a4a4a;
+            margin: 12px 0 18px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        .hero {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 24px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .photo-wrap {
+            text-align: center;
+        }
+        .photo {
+            width: 140px;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid #e3f0e8;
+            box-shadow: 0 4px 12px rgba(31, 92, 79, 0.1);
+        }
+        .photo-placeholder {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 4px dashed #d7e4da;
+            background: #f8fbf9;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #789084;
+            font-size: 14px;
+        }
+        .name {
+            font-size: 31px;
+            line-height: 1.05;
+            margin: 0 0 8px;
+            color: #1f5c4f;
+        }
+        .hero-meta {
+            color: #61766e;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .pill {
+            display: inline-block;
+            background: #eef5f1;
+            color: #2d433e;
+            border: 1px solid #d7e2db;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .card {
+            background: #fbfdfb;
+            border: 1px solid #e1e8e2;
+            border-radius: 12px;
+            padding: 14px 16px;
+        }
+        .card h2 {
+            margin: 0 0 10px;
+            font-size: 14px;
+            color: #1f5c4f;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 16px;
+            margin-bottom: 18px;
+        }
+        .detail {
+            background: #fff;
+            border: 1px solid #e1e8e2;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .detail-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #1f5c4f;
+            margin-bottom: 4px;
+        }
+        .alert {
+            background: #fff1f1;
+            border: 1px solid #edc4c4;
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: #b80000;
+            font-weight: 700;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 18px;
+            font-size: 18px;
+        }
+        .support {
+            margin-top: 18px;
+            background: #f8faf7;
+            border: 1px solid #dbe6de;
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+        .support h2 {
+            margin: 0 0 10px;
+            font-size: 15px;
+            text-transform: uppercase;
+            color: #1f5c4f;
+        }
+        .support p {
+            margin: 0 0 10px;
+            line-height: 1.55;
+            white-space: pre-line;
+        }
+        @media print {
+            body {
+                margin: 0.4cm;
+                background: #fff;
+            }
+            .no-print {
+                display: none;
+            }
+            .print-shell {
+                box-shadow: none;
+                border-radius: 0;
+                border: 1px solid #dbe6de;
+                max-width: none;
+                padding: 16px 18px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="no-print" style="margin-bottom: 16px;"><button onclick="window.print()">Print</button></div>
-    <h1>MAR Resident Profile</h1>
-    <div class="meta"><strong>{{ care_home_name }}</strong><br>{{ resident.name }} · Room {{ resident.room_number }} · DOB {{ resident.date_of_birth|date:"d/m/Y" }}</div>
-    <div class="two-col">
-        <div class="section"><h2>Care summary</h2>{{ resident.care_summary|linebreaksbr|default:'Not recorded' }}</div>
-        <div class="section"><h2>MAR front-page text</h2>{{ resident.mar_front_page_text|linebreaksbr|default:'Not recorded' }}</div>
-        <div class="section"><h2>Medical conditions</h2>{{ resident.medical_conditions|linebreaksbr|default:'Not recorded' }}</div>
-        <div class="section"><h2>Allergies and medication alerts</h2>{{ resident.allergies|linebreaksbr|default:'Not recorded' }}<hr>{{ resident.medication_alerts|linebreaksbr|default:'Not recorded' }}</div>
-        <div class="section"><h2>Monitoring requirements</h2>{{ resident.monitoring_requirements|linebreaksbr|default:'Not recorded' }}</div>
-        <div class="section"><h2>Legal / safeguarding information</h2>{{ resident.legal_safeguarding_information|linebreaksbr|default:'Not recorded' }}</div>
+    <div class="no-print"><button onclick="window.print()">Print</button></div>
+    <div class="print-shell">
+        <div class="title-bar">{{ care_home_name }}</div>
+        <div class="sub-title">Resident Profile</div>
+
+        <div class="hero">
+            <div class="photo-wrap">
+                {% if resident.photo %}
+                    <img src="{{ resident.photo.url }}" alt="{{ resident.name }}" class="photo">
+                {% else %}
+                    <div class="photo-placeholder">No photo</div>
+                {% endif %}
+            </div>
+            <div>
+                <h1 class="name">{{ resident.name }}</h1>
+                <div class="hero-meta">Room {{ resident.room_number }} · {{ resident.date_of_birth|date:"d/m/Y" }} · {{ resident.get_residential_or_nursing_display }}</div>
+                <div>
+                    <span class="pill">NHS {{ resident.nhs_number|default:'Not recorded' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="details">
+            <div class="detail"><div class="detail-label">GP Surgery</div>{{ resident.gp_surgery|default:resident.gp_name|default:'Not recorded' }}</div>
+            <div class="detail"><div class="detail-label">GP Contact</div>{{ resident.gp_contact|default:'Not recorded' }}</div>
+            <div class="detail"><div class="detail-label">Pharmacy</div>{{ resident.pharmacy_name|default:'Not recorded' }}</div>
+            <div class="detail"><div class="detail-label">Pharmacy Contact</div>{{ resident.pharmacy_contact|default:'Not recorded' }}</div>
+            <div class="detail"><div class="detail-label">Next of Kin</div>{{ resident.next_of_kin|default:'Not recorded' }}</div>
+            <div class="detail"><div class="detail-label">NOK Contact</div>{{ resident.next_of_kin_contact|default:'Not recorded' }}</div>
+        </div>
+
+        <div class="alert">Allergies: {{ resident.allergies|default:'Not recorded' }}</div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>MAR Guidance</h2>
+                <div>{{ resident.mar_front_page_text|linebreaksbr|default:'Not recorded' }}</div>
+            </div>
+            <div class="card">
+                <h2>Medical Conditions</h2>
+                <div>{{ resident.medical_conditions|linebreaksbr|default:'Not recorded' }}</div>
+            </div>
+            <div class="card">
+                <h2>Medication Alerts</h2>
+                <div>{{ resident.medication_alerts|linebreaksbr|default:'Not recorded' }}</div>
+            </div>
+            <div class="card">
+                <h2>Monitoring Requirements</h2>
+                <div>{{ resident.monitoring_requirements|linebreaksbr|default:'Not recorded' }}</div>
+            </div>
+            <div class="card">
+                <h2>Legal / Safeguarding</h2>
+                <div>{{ resident.legal_safeguarding_information|linebreaksbr|default:'Not recorded' }}</div>
+            </div>
+        </div>
+
+        <div class="support">
+            <h2>What Level of Support Is Needed for {{ resident.name }}</h2>
+            <p>{{ resident.administration_preferences|default:'Not recorded' }}</p>
+            {% if resident.mar_front_page_text %}
+                <h2>Additional MAR Guidance</h2>
+                <p>{{ resident.mar_front_page_text }}</p>
+            {% endif %}
+        </div>
     </div>
 </body>
 </html>

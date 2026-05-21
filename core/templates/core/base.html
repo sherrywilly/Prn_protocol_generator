@@ -39,6 +39,7 @@
                     <li class="nav-item"><a class="nav-link" href="{% url 'resident_list' %}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
                     {% if perms.core.add_resident %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'resident_create' %}"><i class="bi bi-person-plus"></i> New Profile</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'resident_import' %}"><i class="bi bi-upload"></i> Import CSV</a></li>
                     {% endif %}
                     <li class="nav-item text-white small opacity-75">{{ request.user.get_username }}</li>
                     <li class="nav-item">

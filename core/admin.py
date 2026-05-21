@@ -1,20 +1,13 @@
 from django.contrib import admin
 
-from .models import AuditLog, PRNProtocol, Resident
+from .models import AuditLog, Resident
 
 
 @admin.register(Resident)
 class ResidentAdmin(admin.ModelAdmin):
-    list_display = ['name', 'room_number', 'date_of_birth', 'review_status', 'care_plan_reviewed', 'created_at']
+    list_display = ['name', 'room_number', 'date_of_birth', 'created_at']
     search_fields = ['name', 'room_number', 'nhs_number']
-    list_filter = ['review_status', 'care_plan_reviewed']
-
-
-@admin.register(PRNProtocol)
-class PRNProtocolAdmin(admin.ModelAdmin):
-    list_display = ['medicine_name', 'resident', 'form', 'strength', 'created_at']
-    search_fields = ['medicine_name', 'resident__name']
-    list_filter = ['resident']
+    list_filter = ['residential_or_nursing']
 
 
 @admin.register(AuditLog)

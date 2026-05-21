@@ -1,0 +1,44 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Import Residents - MAR Resident Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body p-4 p-lg-5">
+                <span class="badge badge-soft mb-2">{{ care_home_name }}</span>
+                <h1 class="h3 mb-2"><i class="bi bi-upload"></i> Import resident data</h1>
+                <p class="text-muted mb-4">Upload a CSV or Excel file to bulk create or update residents. If NHS number matches an existing resident, that profile is updated.</p>
+
+                <form method="post" enctype="multipart/form-data" class="mb-4">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        {{ form.csv_file.label_tag }}
+                        {{ form.csv_file }}
+                        {% if form.csv_file.help_text %}<div class="form-text">{{ form.csv_file.help_text }}</div>{% endif %}
+                        {% for error in form.csv_file.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-portal"><i class="bi bi-file-earmark-arrow-up"></i> Import file</button>
+                        <a href="{% url 'resident_import_template' %}" class="btn btn-outline-primary"><i class="bi bi-download"></i> Download template</a>
+                        <a href="{% url 'resident_list' %}" class="btn btn-outline-secondary">Back to dashboard</a>
+                    </div>
+                </form>
+
+                <hr>
+                <h2 class="h5 mt-4">Required columns</h2>
+                <p class="small text-muted mb-2">Header names are case-sensitive and should be in the first row (CSV or Excel).</p>
+                <code>name,room_number,date_of_birth</code>
+
+                <h2 class="h5 mt-4">Optional resident columns</h2>
+                <p class="small text-muted mb-2">Use these when available:</p>
+                <code>nhs_number,residential_or_nursing,mental_capacity,medical_conditions,allergies,medication_alerts,gp_name,gp_surgery,gp_contact,pharmacy_name,pharmacy_contact,next_of_kin,next_of_kin_contact,monitoring_requirements,administration_preferences,legal_safeguarding_information,mar_front_page_text,dnar_in_place,is_diabetic,has_peg,self_medicates,risk_assessment_in_place,has_swallowing_difficulties,on_oxygen,can_take_medication_orally,requires_inhaler,has_medication_capacity,has_parkinsons,mca_in_place,has_dementia,on_blood_thinning_medication,requires_pulse_or_bp_before_medication</code>
+
+                <h2 class="h5 mt-4">Date formats accepted</h2>
+                <code>YYYY-MM-DD</code> or <code>DD/MM/YYYY</code>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

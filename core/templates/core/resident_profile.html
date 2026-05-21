@@ -11,13 +11,19 @@
                 <span class="badge badge-soft mb-2">{{ care_home_name }}</span>
                 <h1 class="h3 mb-1">{{ resident.name }}</h1>
                 <p class="text-muted mb-0">Compact MAR profile view for review conversations and handover.</p>
+                <p class="text-muted mb-0 small">Room {{ resident.room_number }} · {{ resident.get_residential_or_nursing_display }} · NHS {{ resident.nhs_number|default:'Not recorded' }}</p>
             </div>
-            <span class="badge {% if resident.review_status == 'reviewed' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ resident.get_review_status_display }}</span>
+        </div>
+        <div class="row g-3 mb-4 small">
+            <div class="col-md-6"><strong>GP:</strong> {{ resident.gp_name|default:'Not recorded' }}{% if resident.gp_contact %} · {{ resident.gp_contact }}{% endif %}</div>
+            <div class="col-md-6"><strong>Pharmacy:</strong> {{ resident.pharmacy_name|default:'Not recorded' }}{% if resident.pharmacy_contact %} · {{ resident.pharmacy_contact }}{% endif %}</div>
+            <div class="col-md-6"><strong>Next of kin:</strong> {{ resident.next_of_kin|default:'Not recorded' }}{% if resident.next_of_kin_contact %} · {{ resident.next_of_kin_contact }}{% endif %}</div>
+            <div class="col-md-6"><strong>Allergies:</strong> {{ resident.allergies|default:'Not recorded' }}</div>
         </div>
         <div class="row g-4">
             <div class="col-md-6">
-                <h2 class="h5 section-heading">Clinical summary</h2>
-                <p>{{ resident.care_summary|linebreaksbr|default:'Not recorded' }}</p>
+                <h2 class="h5 section-heading">Administration preferences</h2>
+                <p>{{ resident.administration_preferences|linebreaksbr|default:'Not recorded' }}</p>
                 <h2 class="h5 section-heading">Monitoring</h2>
                 <p>{{ resident.monitoring_requirements|linebreaksbr|default:'Not recorded' }}</p>
             </div>

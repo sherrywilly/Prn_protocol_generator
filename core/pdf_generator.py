@@ -1,6 +1,8 @@
 from io import BytesIO
+from pathlib import Path
 
 from django.http import HttpResponse
+from django.conf import settings
 from django.template.loader import render_to_string
 
 try:
@@ -14,14 +16,20 @@ except ImportError:
     Document = None
 
 
-def _build_export_filename(protocol, extension):
-    safe_resident = protocol.resident.name.replace(' ', '_')
-    safe_medicine = protocol.medicine_name.replace(' ', '_')
-    return f"PRN_Protocol_{safe_resident}_{safe_medicine}.{extension}"
-
-
 def _format_date(value):
     return value.strftime('%d/%m/%Y') if value else '—'
+
+
+def _resident_photo_uri(resident):
+    if not getattr(resident, 'photo', None):
+        return ''
+    try:
+        photo_path = Path(resident.photo.path)
+    except (ValueError, NotImplementedError):
+        return ''
+    if not photo_path.exists():
+        return ''
+    return photo_path.as_uri()
 
 
 def _set_cell_border(cell, color='999999', size='8'):
@@ -79,27 +87,15 @@ def _set_paragraph_spacing(paragraph, before=0, after=0, line=1.0, alignment=Non
         paragraph.alignment = alignment
 
 
-def _add_paragraph_bottom_border(paragraph, color='000000', size='12'):
-    paragraph_properties = paragraph._p.get_or_add_pPr()
-    borders = paragraph_properties.first_child_found_in('w:pBdr')
-    if borders is None:
-        borders = OxmlElement('w:pBdr')
-        paragraph_properties.append(borders)
-    bottom = borders.find(qn('w:bottom'))
-    if bottom is None:
-        bottom = OxmlElement('w:bottom')
-        borders.append(bottom)
-    bottom.set(qn('w:val'), 'single')
-    bottom.set(qn('w:sz'), size)
-    bottom.set(qn('w:color'), color)
-
-
 def _set_document_defaults(document):
     section = document.sections[0]
-    section.top_margin = Cm(1.5)
-    section.bottom_margin = Cm(1.5)
-    section.left_margin = Cm(2)
-    section.right_margin = Cm(2)
+    # Force A4 to keep pagination consistent across systems/printers.
+    section.page_width = Cm(21.0)
+    section.page_height = Cm(29.7)
+    section.top_margin = Cm(1.1)
+    section.bottom_margin = Cm(1.1)
+    section.left_margin = Cm(1.35)
+    section.right_margin = Cm(1.35)
 
     normal_style = document.styles['Normal']
     normal_style.font.name = 'Arial'
@@ -108,16 +104,6 @@ def _set_document_defaults(document):
     normal_style.font.size = Pt(10)
     normal_style.paragraph_format.space_before = Pt(0)
     normal_style.paragraph_format.space_after = Pt(0)
-
-
-def _add_title(document):
-    paragraph = document.add_paragraph()
-    _set_paragraph_spacing(paragraph, after=10, alignment=WD_ALIGN_PARAGRAPH.CENTER)
-    _add_paragraph_bottom_border(paragraph)
-    run = paragraph.add_run('PRN PROTOCOL')
-    run.bold = True
-    run.font.name = 'Arial'
-    run.font.size = Pt(16)
 
 
 def _set_table_layout(table):
@@ -143,302 +129,6 @@ def _set_table_layout(table):
 def _set_row_height(row, height_cm, exact=False):
     row.height = Cm(height_cm)
     row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY if exact else WD_ROW_HEIGHT_RULE.AT_LEAST
-
-
-def _write_field_cell(cell, label, value):
-    _clear_cell(cell)
-    _set_cell_border(cell)
-    _set_cell_margins(cell)
-    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
-
-    paragraph = cell.paragraphs[0]
-    _set_paragraph_spacing(paragraph)
-
-    label_run = paragraph.add_run(label)
-    label_run.bold = True
-    label_run.font.name = 'Arial'
-    label_run.font.size = Pt(8)
-    label_run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
-
-    paragraph.add_run('\n')
-
-    lines = str(value or '—').splitlines() or ['—']
-    for index, line in enumerate(lines):
-        value_run = paragraph.add_run(line or ' ')
-        value_run.font.name = 'Arial'
-        value_run.font.size = Pt(10)
-        if index < len(lines) - 1:
-            paragraph.add_run('\n')
-
-
-def _add_field_row(document, fields, total_width_cm=17, row_height_cm=1.0):
-    table = document.add_table(rows=1, cols=len(fields))
-    _set_table_layout(table)
-    row = table.rows[0]
-    _set_row_height(row, row_height_cm, exact=False)
-    total_ratio = sum(field['ratio'] for field in fields)
-
-    for index, field in enumerate(fields):
-        width = Cm(total_width_cm * field['ratio'] / total_ratio)
-        row.cells[index].width = width
-        _write_field_cell(row.cells[index], field['label'], field['value'])
-
-    spacer = document.add_paragraph()
-    _set_paragraph_spacing(spacer, after=1)
-    return table
-
-
-def _add_section_box(document, heading, content_lines=None, bullets=False, min_height_cm=1.5):
-    heading_paragraph = document.add_paragraph()
-    _set_paragraph_spacing(heading_paragraph, before=3, after=3)
-    heading_run = heading_paragraph.add_run(heading)
-    heading_run.bold = True
-    heading_run.font.name = 'Arial'
-    heading_run.font.size = Pt(9)
-    heading_run.font.color.rgb = RGBColor(0x22, 0x22, 0x22)
-
-    table = document.add_table(rows=1, cols=1)
-    _set_table_layout(table)
-    _set_row_height(table.rows[0], min_height_cm, exact=False)
-    cell = table.cell(0, 0)
-    _clear_cell(cell)
-    _set_cell_border(cell)
-    _set_cell_margins(cell, top=120, start=120, bottom=120, end=120)
-
-    content_lines = content_lines or ['']
-    if bullets:
-        first_paragraph = cell.paragraphs[0]
-        for index, item in enumerate(content_lines):
-            paragraph = first_paragraph if index == 0 else cell.add_paragraph()
-            paragraph.style = 'List Bullet'
-            _set_paragraph_spacing(paragraph)
-            paragraph.add_run(item)
-    else:
-        first_paragraph = cell.paragraphs[0]
-        _set_paragraph_spacing(first_paragraph)
-        for index, line in enumerate(content_lines):
-            if index == 0:
-                paragraph = first_paragraph
-            else:
-                paragraph = cell.add_paragraph()
-                _set_paragraph_spacing(paragraph)
-            paragraph.add_run(line or ' ')
-
-    spacer = document.add_paragraph()
-    _set_paragraph_spacing(spacer, after=1)
-    return table
-
-
-def _checkbox(value):
-    return '☒' if value else '☐'
-
-
-def _add_gp_section(document, protocol):
-    table = document.add_table(rows=1, cols=1)
-    _set_table_layout(table)
-    _set_row_height(table.rows[0], 2.0, exact=False)
-    cell = table.cell(0, 0)
-    _clear_cell(cell)
-    _set_cell_border(cell)
-    _set_cell_margins(cell, top=120, start=120, bottom=120, end=120)
-
-    title = cell.paragraphs[0]
-    _set_paragraph_spacing(title, after=4)
-    title_run = title.add_run('Circumstance of reporting to GP (Tick as appropriate)')
-    title_run.bold = True
-    title_run.font.name = 'Arial'
-    title_run.font.size = Pt(9.5)
-
-    gp_rows = [
-        f"{_checkbox(protocol.gp_persistent_need)} Persistent need for upper level of dosage",
-        f"{_checkbox(protocol.gp_never_requesting)} Never requesting dosage",
-        f"{_checkbox(protocol.gp_requesting_too_often)} Requesting too often",
-        f"{_checkbox(protocol.gp_side_effects)} Side effects experienced",
-        f"☐ Other (please state): {protocol.gp_other or '___________'}",
-    ]
-    for item in gp_rows:
-        paragraph = cell.add_paragraph()
-        _set_paragraph_spacing(paragraph, after=1)
-        run = paragraph.add_run(item)
-        run.font.name = 'Arial'
-        run.font.size = Pt(10)
-
-    return table
-
-
-def _write_table_cell(cell, text, bold=False, fill=None):
-    _clear_cell(cell)
-    _set_cell_border(cell)
-    _set_cell_margins(cell)
-    if fill:
-        _set_cell_shading(cell, fill)
-    paragraph = cell.paragraphs[0]
-    _set_paragraph_spacing(paragraph)
-    run = paragraph.add_run(text or '')
-    run.bold = bold
-    run.font.name = 'Arial'
-    run.font.size = Pt(9.5)
-
-
-def _add_signature_table(document, protocol, total_width_cm=17):
-    table = document.add_table(rows=7, cols=4)
-    _set_table_layout(table)
-    widths = [Cm(total_width_cm * ratio) for ratio in (0.2, 0.3, 0.3, 0.2)]
-
-    for row in table.rows:
-        for index, width in enumerate(widths):
-            row.cells[index].width = width
-
-    _set_row_height(table.rows[0], 0.7, exact=True)
-    _set_row_height(table.rows[1], 0.85)
-    _set_row_height(table.rows[2], 0.85)
-    _set_row_height(table.rows[3], 0.75)
-    _set_row_height(table.rows[4], 0.85)
-    _set_row_height(table.rows[5], 0.85)
-    _set_row_height(table.rows[6], 0.75)
-
-    header_cells = table.rows[0].cells
-    _write_table_cell(header_cells[0], '', bold=True, fill='E0E0E0')
-    _write_table_cell(header_cells[1], 'Name & Signature', bold=True, fill='E0E0E0')
-    _write_table_cell(header_cells[2], 'Designation', bold=True, fill='E0E0E0')
-    _write_table_cell(header_cells[3], 'Date', bold=True, fill='E0E0E0')
-
-    _write_table_cell(table.rows[1].cells[0], 'Prepared by', bold=True)
-    _write_table_cell(table.rows[1].cells[1], protocol.prepared_by_name)
-    _write_table_cell(table.rows[1].cells[2], protocol.prepared_by_designation)
-    _write_table_cell(table.rows[1].cells[3], _format_date(protocol.prepared_by_date) if protocol.prepared_by_date else '')
-
-    _write_table_cell(table.rows[2].cells[0], 'Approved by', bold=True)
-    _write_table_cell(table.rows[2].cells[1], protocol.approved_by_name)
-    _write_table_cell(table.rows[2].cells[2], protocol.approved_by_designation)
-    _write_table_cell(table.rows[2].cells[3], _format_date(protocol.approved_by_date) if protocol.approved_by_date else '')
-
-    _write_table_cell(table.rows[3].cells[0], 'Review date:', bold=True)
-    merged_review = table.rows[3].cells[1].merge(table.rows[3].cells[3])
-    _write_table_cell(merged_review, _format_date(protocol.review_date) if protocol.review_date else '')
-
-    _write_table_cell(table.rows[4].cells[0], 'Reviewed by', bold=True)
-    _write_table_cell(table.rows[4].cells[1], protocol.reviewed_by_name)
-    _write_table_cell(table.rows[4].cells[2], protocol.reviewed_by_designation)
-    _write_table_cell(table.rows[4].cells[3], _format_date(protocol.reviewed_by_date) if protocol.reviewed_by_date else '')
-
-    _write_table_cell(table.rows[5].cells[0], 'Checked by', bold=True)
-    _write_table_cell(table.rows[5].cells[1], protocol.checked_by_name)
-    _write_table_cell(table.rows[5].cells[2], protocol.checked_by_designation)
-    _write_table_cell(table.rows[5].cells[3], _format_date(protocol.checked_by_date) if protocol.checked_by_date else '')
-
-    _write_table_cell(table.rows[6].cells[0], 'New review date:', bold=True)
-    merged_new_review = table.rows[6].cells[1].merge(table.rows[6].cells[3])
-    _write_table_cell(merged_new_review, _format_date(protocol.new_review_date) if protocol.new_review_date else '')
-
-    return table
-def generate_protocol_pdf(protocol):
-    try:
-        from weasyprint import HTML
-    except ImportError:
-        return HttpResponse("WeasyPrint is not installed. Cannot generate PDF.", status=500)
-
-    html_string = render_to_string('core/protocol_pdf.html', {'protocol': protocol})
-    html = HTML(string=html_string, base_url='/')
-    pdf = html.write_pdf()
-
-    response = HttpResponse(pdf, content_type='application/pdf')
-    filename = _build_export_filename(protocol, 'pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
-
-
-def generate_protocol_docx(protocol):
-    if Document is None:
-        return HttpResponse("python-docx is not installed. Cannot generate DOCX.", status=500)
-
-    document = Document()
-    _set_document_defaults(document)
-    _add_title(document)
-
-    _add_field_row(
-        document,
-        [
-            {'label': "Resident's Name", 'value': protocol.resident.name, 'ratio': 2},
-            {'label': 'Room No.', 'value': protocol.resident.room_number, 'ratio': 1},
-            {'label': 'Date of Birth', 'value': _format_date(protocol.resident.date_of_birth), 'ratio': 1},
-        ],
-        row_height_cm=1.05,
-    )
-    _add_field_row(
-        document,
-        [
-            {'label': 'Name of Medicine', 'value': protocol.medicine_name, 'ratio': 2},
-            {'label': 'Form', 'value': protocol.form, 'ratio': 1},
-        ],
-        row_height_cm=1.0,
-    )
-    _add_field_row(
-        document,
-        [
-            {'label': 'Strength', 'value': protocol.strength, 'ratio': 1},
-            {'label': 'Route of Administration', 'value': protocol.route_of_administration, 'ratio': 1},
-        ],
-        row_height_cm=1.0,
-    )
-    _add_field_row(
-        document,
-        [
-            {'label': 'Dose and Frequency', 'value': protocol.dose_and_frequency, 'ratio': 2},
-            {'label': 'Minimum Time Interval Between Doses', 'value': protocol.min_time_interval, 'ratio': 1.5},
-        ],
-        row_height_cm=1.15,
-    )
-    _add_field_row(
-        document,
-        [
-            {'label': 'Maximum Dose in 24 Hours', 'value': protocol.max_dose_24h, 'ratio': 1},
-        ],
-        row_height_cm=0.95,
-    )
-
-    _add_section_box(
-        document,
-        'Does the resident request medication / require prompting / require observing for symptoms:',
-        protocol.capacity_statement.splitlines() or [''],
-        min_height_cm=1.6,
-    )
-    _add_section_box(
-        document,
-        'Reason for medication administration - describe in as much detail as possible the condition being treated i.e. signs and symptoms, behaviours, type of pain - where and when, expected outcome. For creams indicate where it should be applied. If the dose is variable, describe the circumstances under which each dose is to be given.',
-        protocol.reason_for_administration.splitlines() or [''],
-        min_height_cm=2.5,
-    )
-    _add_section_box(
-        document,
-        'Special Instructions (e.g. specific administration instructions)',
-        protocol.get_special_instructions_list() or [''],
-        bullets=bool(protocol.get_special_instructions_list()),
-        min_height_cm=1.5,
-    )
-    _add_section_box(
-        document,
-        'Additional information (e.g. side effects to look out for; what to do if requesting more frequently than prescribed or not requiring medication at all)',
-        protocol.get_additional_information_list() or [''],
-        bullets=bool(protocol.get_additional_information_list()),
-        min_height_cm=1.7,
-    )
-    _add_gp_section(document, protocol)
-    _add_signature_table(document, protocol)
-
-    buffer = BytesIO()
-    document.save(buffer)
-    buffer.seek(0)
-
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    )
-    filename = _build_export_filename(protocol, 'docx')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
-
-
 def _build_resident_export_filename(resident, extension):
     safe_resident = resident.name.replace(' ', '_')
     return f"MAR_Resident_Profile_{safe_resident}.{extension}"
@@ -454,38 +144,182 @@ def _first_line(value, default='—'):
     return lines[0] if lines else default
 
 
-def _bool_indicator(value):
-    return 'YES' if value else 'NO'
+def _clean_text(value, fallback='Not recorded'):
+    cleaned = str(value or '').strip()
+    return cleaned if cleaned else fallback
 
 
-def _add_resident_panel(document, title, lines, fill='F7FAF8'):
-    title_paragraph = document.add_paragraph()
-    _set_paragraph_spacing(title_paragraph, before=2, after=2)
-    title_run = title_paragraph.add_run(title)
-    title_run.bold = True
-    title_run.font.name = 'Arial'
-    title_run.font.size = Pt(10)
-    title_run.font.color.rgb = RGBColor(0x2D, 0x43, 0x3E)
+def _contains_any(value, *terms):
+    text = (value or '').lower()
+    return any(term in text for term in terms)
+
+
+def _add_resident_docx_banner(document, text, fill='E8F1EC', color='1F5C4F', font_size=10, border_color='D5E2DA'):
+    table = document.add_table(rows=1, cols=1)
+    _set_table_layout(table)
+    table.rows[0].cells[0].width = Cm(18)
+    cell = table.cell(0, 0)
+    _clear_cell(cell)
+    _set_cell_border(cell, color=border_color, size='6')
+    _set_cell_shading(cell, fill)
+    _set_cell_margins(cell, top=70, start=100, bottom=70, end=100)
+
+    paragraph = cell.paragraphs[0]
+    _set_paragraph_spacing(paragraph, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    run = paragraph.add_run(text)
+    run.bold = True
+    run.font.name = 'Arial'
+    run.font.size = Pt(font_size)
+    run.font.color.rgb = RGBColor.from_string(color)
+
+    spacer = document.add_paragraph()
+    _set_paragraph_spacing(spacer, after=1)
+
+
+def _add_resident_docx_photo(document, resident):
+    paragraph = document.add_paragraph()
+    _set_paragraph_spacing(paragraph, after=2, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    try:
+        photo_path = Path(resident.photo.path) if getattr(resident, 'photo', None) else None
+    except (ValueError, NotImplementedError):
+        photo_path = None
+
+    if photo_path and photo_path.exists():
+        run = paragraph.add_run()
+        run.add_picture(str(photo_path), width=Cm(2.7), height=Cm(3.5))
+        return
+
+    run = paragraph.add_run('[ No Photo ]')
+    run.font.name = 'Arial'
+    run.font.size = Pt(10)
+    run.italic = True
+    run.font.color.rgb = RGBColor(0x6B, 0x72, 0x73)
+
+
+def _add_resident_docx_center_text(document, text, size=10, bold=True, color='2D433E', after=4):
+    paragraph = document.add_paragraph()
+    _set_paragraph_spacing(paragraph, after=after, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    run = paragraph.add_run(text)
+    run.bold = bold
+    run.font.name = 'Arial'
+    run.font.size = Pt(size)
+    run.font.color.rgb = RGBColor.from_string(color)
+
+
+def _write_resident_docx_kv(cell, label, value, fill='FFFFFF'):
+    _clear_cell(cell)
+    _set_cell_border(cell, color='E1E8E2', size='6')
+    _set_cell_shading(cell, fill)
+    _set_cell_margins(cell, top=70, start=90, bottom=70, end=90)
+    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+
+    paragraph = cell.paragraphs[0]
+    _set_paragraph_spacing(paragraph, line=1.0)
+
+    label_run = paragraph.add_run(f'{label}: ')
+    label_run.bold = True
+    label_run.font.name = 'Arial'
+    label_run.font.size = Pt(7.2)
+    label_run.font.color.rgb = RGBColor(0x1F, 0x5C, 0x4F)
+
+    value_run = paragraph.add_run(value or 'Not recorded')
+    value_run.font.name = 'Arial'
+    value_run.font.size = Pt(8.2)
+    value_run.font.color.rgb = RGBColor(0x22, 0x35, 0x31)
+
+
+def _add_resident_docx_info_table(document, rows):
+    table = document.add_table(rows=len(rows), cols=2)
+    _set_table_layout(table)
+    for row_index, row_values in enumerate(rows):
+        row = table.rows[row_index]
+        _set_row_height(row, 0.64, exact=False)
+        row.cells[0].width = Cm(8.9)
+        row.cells[1].width = Cm(8.9)
+        _write_resident_docx_kv(row.cells[0], row_values[0][0], row_values[0][1], fill='FFFFFF')
+        _write_resident_docx_kv(row.cells[1], row_values[1][0], row_values[1][1], fill='FFFFFF')
+
+    spacer = document.add_paragraph()
+    _set_paragraph_spacing(spacer, after=1)
+
+
+def _add_resident_docx_alert(document, text):
+    table = document.add_table(rows=1, cols=1)
+    _set_table_layout(table)
+    cell = table.cell(0, 0)
+    _clear_cell(cell)
+    _set_cell_border(cell, color='E6BABA', size='8')
+    _set_cell_shading(cell, 'FFF1F1')
+    _set_cell_margins(cell, top=80, start=90, bottom=80, end=90)
+
+    paragraph = cell.paragraphs[0]
+    _set_paragraph_spacing(paragraph, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    run = paragraph.add_run(text)
+    run.bold = True
+    run.font.name = 'Arial'
+    run.font.size = Pt(12.5)
+    run.font.color.rgb = RGBColor(0xB8, 0x00, 0x00)
+
+    spacer = document.add_paragraph()
+    _set_paragraph_spacing(spacer, after=1)
+
+
+def _add_resident_docx_checklist(document, rows):
+    table = document.add_table(rows=len(rows), cols=2)
+    _set_table_layout(table)
+    for row_index, pair in enumerate(rows):
+        row = table.rows[row_index]
+        _set_row_height(row, 0.68, exact=False)
+        for col_index, item in enumerate(pair):
+            cell = row.cells[col_index]
+            cell.width = Cm(8.9)
+            _clear_cell(cell)
+            _set_cell_border(cell, color='E1E8E2', size='6')
+            _set_cell_shading(cell, 'FFFFFF')
+            _set_cell_margins(cell, top=70, start=90, bottom=70, end=90)
+
+            paragraph = cell.paragraphs[0]
+            _set_paragraph_spacing(paragraph, line=1.0)
+
+            label_run = paragraph.add_run(f'{item[0]}: ')
+            label_run.bold = True
+            label_run.font.name = 'Arial'
+            label_run.font.size = Pt(7.1)
+            label_run.font.color.rgb = RGBColor(0x1F, 0x5C, 0x4F)
+
+            value_run = paragraph.add_run(item[1])
+            value_run.font.name = 'Arial'
+            value_run.font.size = Pt(8.1)
+            value_run.font.color.rgb = RGBColor(0x22, 0x35, 0x31)
+
+
+def _add_resident_docx_body_section(document, title, body):
+    heading = document.add_paragraph()
+    _set_paragraph_spacing(heading, before=2, after=3)
+    heading_run = heading.add_run(title)
+    heading_run.bold = True
+    heading_run.font.name = 'Arial'
+    heading_run.font.size = Pt(11)
+    heading_run.font.color.rgb = RGBColor(0x1F, 0x5C, 0x4F)
 
     panel = document.add_table(rows=1, cols=1)
     _set_table_layout(panel)
     cell = panel.cell(0, 0)
     _clear_cell(cell)
-    _set_cell_border(cell, color='D8E0DD')
-    _set_cell_margins(cell, top=120, start=140, bottom=120, end=140)
-    _set_cell_shading(cell, fill)
+    _set_cell_border(cell, color='D7E2DB', size='6')
+    _set_cell_shading(cell, 'F8FAF7')
+    _set_cell_margins(cell, top=140, start=150, bottom=140, end=150)
 
     first = cell.paragraphs[0]
-    _set_paragraph_spacing(first)
+    _set_paragraph_spacing(first, line=1.25)
+    lines = _split_lines(body)
     for idx, line in enumerate(lines):
         paragraph = first if idx == 0 else cell.add_paragraph()
-        _set_paragraph_spacing(paragraph, after=1)
-        run = paragraph.add_run(line or '—')
+        _set_paragraph_spacing(paragraph, after=1, line=1.25)
+        run = paragraph.add_run(line)
         run.font.name = 'Arial'
         run.font.size = Pt(9.5)
-
-    spacer = document.add_paragraph()
-    _set_paragraph_spacing(spacer, after=1)
+        run.font.color.rgb = RGBColor(0x22, 0x35, 0x31)
 
 
 def generate_resident_pdf(resident):
@@ -494,8 +328,17 @@ def generate_resident_pdf(resident):
     except ImportError:
         return HttpResponse('WeasyPrint is not installed. Cannot generate PDF.', status=500)
 
-    html_string = render_to_string('core/resident_pdf.html', {'resident': resident, 'care_home_name': 'Welshwood Manor'})
-    html = HTML(string=html_string, base_url='/')
+    html_string = render_to_string(
+        'core/resident_pdf.html',
+        {
+            'resident': resident,
+            'care_home_name': 'Welshwood Manor',
+            'resident_photo_uri': _resident_photo_uri(resident),
+            'support_needs_text': _clean_text(resident.administration_preferences),
+            'mar_guidance_text': _clean_text(resident.mar_front_page_text, fallback=''),
+        },
+    )
+    html = HTML(string=html_string, base_url=str(settings.BASE_DIR))
     pdf = html.write_pdf()
 
     response = HttpResponse(pdf, content_type='application/pdf')
@@ -511,83 +354,47 @@ def generate_resident_docx(resident):
     document = Document()
     _set_document_defaults(document)
 
-    heading = document.add_paragraph()
-    _set_paragraph_spacing(heading, after=2, alignment=WD_ALIGN_PARAGRAPH.LEFT)
-    title = heading.add_run('MAR RESIDENT PROFILE')
-    title.bold = True
-    title.font.name = 'Arial'
-    title.font.size = Pt(9)
-    title.font.color.rgb = RGBColor(0x73, 0x84, 0x7E)
+    _add_resident_docx_banner(document, 'WELSHWOOD MANOR', fill='E3F0E8', color='1F5C4F', font_size=9, border_color='D3E1D8')
+    _add_resident_docx_center_text(document, 'RESIDENT PROFILE', size=8.2, bold=True, color='3A4A4A', after=3)
+    _add_resident_docx_photo(document, resident)
+    _add_resident_docx_center_text(document, f'BEDROOM NUMBER {resident.room_number or "N/A"}', size=8.6, bold=True, color='4A6A5A', after=3)
 
-    name_line = document.add_paragraph()
-    _set_paragraph_spacing(name_line, after=8, alignment=WD_ALIGN_PARAGRAPH.LEFT)
-    resident_name = name_line.add_run(resident.name)
-    resident_name.bold = True
-    resident_name.font.name = 'Arial'
-    resident_name.font.size = Pt(20)
-    resident_name.font.color.rgb = RGBColor(0x1F, 0x5C, 0x4F)
-
-    _add_field_row(
+    _add_resident_docx_info_table(
         document,
         [
-            {'label': 'Suite', 'value': resident.room_number or '—', 'ratio': 1},
-            {'label': 'NHS number', 'value': resident.nhs_number or '—', 'ratio': 1},
-            {'label': 'DOB', 'value': _format_date(resident.date_of_birth), 'ratio': 1},
-            {'label': 'Review status', 'value': resident.get_review_status_display(), 'ratio': 1},
+            [('Name', resident.name or 'Not recorded'), ('NOK', resident.next_of_kin or 'Not recorded')],
+            [('Date of Birth', _format_date(resident.date_of_birth)), ('NOK Contact', resident.next_of_kin_contact or 'Not recorded')],
+            [('Date of Photo', _format_date(resident.updated_at.date() if resident.updated_at else None)), ('NHS Number', resident.nhs_number or 'Not recorded')],
+            [('GP Surgery', resident.gp_surgery or resident.gp_name or 'Not recorded'), ('GP Contact', resident.gp_contact or 'Not recorded')],
+            [('Residential or Nursing', resident.get_residential_or_nursing_display()), ('DNAR in place', 'YES' if resident.dnar_in_place else 'No')],
+            [('Pharmacy', resident.pharmacy_name or 'Not recorded'), ('Pharmacy Contact', resident.pharmacy_contact or 'Not recorded')],
         ],
-        row_height_cm=0.95,
     )
 
-    _add_resident_panel(
+    _add_resident_docx_alert(document, f'ALLERGIES: {resident.allergies or "Not recorded"}')
+
+    _add_resident_docx_checklist(
         document,
-        'Critical Medical Alerts',
         [
-            f'Diagnosed: {_first_line(resident.medical_conditions)}',
-            f'High-alert med: {_first_line(resident.medication_alerts)}',
-            f'Allergies: {_first_line(resident.allergies)}',
-            'Medication alerts',
-            '\n'.join(resident.get_medication_alerts_list()[:3]) or '—',
-        ],
-        fill='FFF7F7',
-    )
-    _add_resident_panel(
-        document,
-        'Legal & Safety',
-        [
-            f'MCA in place: {_bool_indicator(bool((resident.mental_capacity or "").strip()))}',
-            f'DNACPR in place: {_bool_indicator("dnacpr" in (resident.legal_safeguarding_information or "").lower())}',
-            f'Legal note: {_first_line(resident.legal_safeguarding_information)}',
-        ],
-        fill='F4F8F6',
-    )
-    _add_resident_panel(
-        document,
-        'Medication Protocol',
-        [
-            f'Vital signs required: {_first_line(resident.monitoring_requirements)}',
-            f'Administration route notes: {_first_line(resident.mar_front_page_text)}',
-            f'Resident preferences: {_first_line(resident.administration_preferences)}',
+            [('Is diabetic', 'Yes' if resident.is_diabetic else 'No'), ('Has a PEG in situ', 'Yes' if resident.has_peg else 'No')],
+            [('Self medicates', 'Yes' if resident.self_medicates else 'No'), ('Risk assessment in place', 'Yes' if resident.risk_assessment_in_place else 'No')],
+            [('Swallowing difficulties', 'Yes' if resident.has_swallowing_difficulties else 'No'), ('On oxygen', 'Yes' if resident.on_oxygen else 'No')],
+            [('Can take medication orally', 'Yes' if resident.can_take_medication_orally else 'No'), ('Requires an inhaler', 'Yes' if resident.requires_inhaler else 'No')],
+            [('Has capacity around medication', 'Yes' if resident.has_medication_capacity else 'No'), ('Has Parkinsons', 'Yes' if resident.has_parkinsons else 'No')],
+            [('MCA in place', 'Yes' if resident.mca_in_place else 'No'), ('Has dementia', 'Yes' if resident.has_dementia else 'No')],
+            [('On blood thinning medication', 'Yes' if resident.on_blood_thinning_medication else 'No'), ('Needs pulse or BP before medication', 'Yes' if resident.requires_pulse_or_bp_before_medication else 'No')],
         ],
     )
-    _add_resident_panel(
+
+    document.add_page_break()
+    _add_resident_docx_banner(document, 'WELSHWOOD MANOR', fill='E3F0E8', color='1F5C4F', font_size=10, border_color='D3E1D8')
+    _add_resident_docx_body_section(
         document,
-        'Key Contacts',
-        [
-            f'GP surgery: {resident.gp_name or "Not recorded"} {f"({resident.gp_contact})" if resident.gp_contact else ""}'.strip(),
-            f'Pharmacy: {resident.pharmacy_name or "Not recorded"} {f"({resident.pharmacy_contact})" if resident.pharmacy_contact else ""}'.strip(),
-            f'Next of kin: {resident.next_of_kin or "Not recorded"} {f"({resident.next_of_kin_contact})" if resident.next_of_kin_contact else ""}'.strip(),
-            f'Emergency: {resident.emergency_contact_name or "Not recorded"} {f"({resident.emergency_contact_phone})" if resident.emergency_contact_phone else ""}'.strip(),
-        ],
+        f'WHAT LEVEL OF SUPPORT IS NEEDED FOR {resident.name.upper() if resident.name else "THIS RESIDENT"}:',
+        resident.administration_preferences or 'Not recorded',
     )
-    _add_resident_panel(
-        document,
-        'Nutritional Status',
-        [
-            f'PEG status: {"YES" if "peg" in (resident.medical_conditions or "").lower() else "N/A (Oral)"}',
-            f'Dietary requirements: {_first_line(resident.care_summary)}',
-        ],
-        fill='F4F8F6',
-    )
+    if (resident.mar_front_page_text or '').strip():
+        _add_resident_docx_body_section(document, 'ADDITIONAL MAR GUIDANCE:', resident.mar_front_page_text)
 
     buffer = BytesIO()
     document.save(buffer)

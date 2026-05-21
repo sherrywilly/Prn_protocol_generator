@@ -4,17 +4,18 @@ from django.utils import timezone
 
 
 class Resident(models.Model):
-    REVIEW_STATUS_DRAFT = 'draft'
-    REVIEW_STATUS_IN_REVIEW = 'in_review'
-    REVIEW_STATUS_REVIEWED = 'reviewed'
-    REVIEW_STATUS_CHOICES = [
-        (REVIEW_STATUS_DRAFT, 'Draft'),
-        (REVIEW_STATUS_IN_REVIEW, 'In review'),
-        (REVIEW_STATUS_REVIEWED, 'Reviewed'),
+    RESIDENTIAL_OR_NURSING_CHOICES = [
+        ('residential', 'Residential'),
+        ('nursing', 'Nursing'),
     ]
 
     name = models.CharField(max_length=200)
     room_number = models.CharField(max_length=20)
+    residential_or_nursing = models.CharField(
+        max_length=20,
+        choices=RESIDENTIAL_OR_NURSING_CHOICES,
+        default='residential',
+    )
     date_of_birth = models.DateField()
     mental_capacity = models.TextField(blank=True, default='')
     medical_conditions = models.TextField(blank=True, default='')
@@ -29,28 +30,25 @@ class Resident(models.Model):
     gp_contact = models.CharField(max_length=20, blank=True, default='')
     pharmacy_name = models.CharField(max_length=200, blank=True, default='')
     pharmacy_contact = models.CharField(max_length=20, blank=True, default='')
-    emergency_contact_name = models.CharField(max_length=200, blank=True, default='')
-    emergency_contact_relationship = models.CharField(max_length=100, blank=True, default='')
-    emergency_contact_phone = models.CharField(max_length=20, blank=True, default='')
     monitoring_requirements = models.TextField(blank=True, default='')
     administration_preferences = models.TextField(blank=True, default='')
     legal_safeguarding_information = models.TextField(blank=True, default='')
-    care_summary = models.TextField(blank=True, default='')
     mar_front_page_text = models.TextField(blank=True, default='')
-    care_plan_reviewed = models.DateField(null=True, blank=True)
-    review_status = models.CharField(
-        max_length=20,
-        choices=REVIEW_STATUS_CHOICES,
-        default=REVIEW_STATUS_DRAFT,
-    )
-    reviewed_at = models.DateTimeField(null=True, blank=True)
-    reviewed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='reviewed_residents',
-    )
+    dnar_in_place = models.BooleanField(default=False)
+    is_diabetic = models.BooleanField(default=False)
+    has_peg = models.BooleanField(default=False)
+    self_medicates = models.BooleanField(default=False)
+    risk_assessment_in_place = models.BooleanField(default=False)
+    has_swallowing_difficulties = models.BooleanField(default=False)
+    on_oxygen = models.BooleanField(default=False)
+    can_take_medication_orally = models.BooleanField(default=False)
+    requires_inhaler = models.BooleanField(default=False)
+    has_medication_capacity = models.BooleanField(default=False)
+    has_parkinsons = models.BooleanField(default=False)
+    mca_in_place = models.BooleanField(default=False)
+    has_dementia = models.BooleanField(default=False)
+    on_blood_thinning_medication = models.BooleanField(default=False)
+    requires_pulse_or_bp_before_medication = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -73,6 +71,9 @@ class Resident(models.Model):
     def get_allergies_list(self):
         return self._split_multiline(self.allergies)
 
+    def get_medical_conditions_list(self):
+        return self._split_multiline(self.medical_conditions)
+
     def get_medication_alerts_list(self):
         return self._split_multiline(self.medication_alerts)
 
@@ -84,59 +85,6 @@ class Resident(models.Model):
 
     def get_legal_safeguarding_information_list(self):
         return self._split_multiline(self.legal_safeguarding_information)
-
-
-class PRNProtocol(models.Model):
-    resident = models.ForeignKey(Resident, on_delete=models.CASCADE, related_name='protocols')
-    medicine_name = models.CharField(max_length=200)
-    form = models.CharField(max_length=100)
-    strength = models.CharField(max_length=100)
-    route_of_administration = models.CharField(max_length=100)
-    dose_and_frequency = models.TextField()
-    min_time_interval = models.CharField(max_length=100)
-    max_dose_24h = models.CharField(max_length=100)
-    medication_instruction = models.TextField(blank=True, default='')
-    capacity_statement = models.TextField()
-    reason_for_administration = models.TextField()
-    special_instructions = models.TextField(blank=True)
-    additional_information = models.TextField(blank=True)
-    gp_persistent_need = models.BooleanField(default=False)
-    gp_never_requesting = models.BooleanField(default=False)
-    gp_requesting_too_often = models.BooleanField(default=False)
-    gp_side_effects = models.BooleanField(default=False)
-    gp_other = models.CharField(max_length=200, blank=True)
-    prepared_by_name = models.CharField(max_length=200, blank=True)
-    prepared_by_designation = models.CharField(max_length=100, blank=True)
-    prepared_by_date = models.DateField(null=True, blank=True)
-    approved_by_name = models.CharField(max_length=200, blank=True)
-    approved_by_designation = models.CharField(max_length=100, blank=True)
-    approved_by_date = models.DateField(null=True, blank=True)
-    review_date = models.DateField(null=True, blank=True)
-    reviewed_by_name = models.CharField(max_length=200, blank=True)
-    reviewed_by_designation = models.CharField(max_length=100, blank=True)
-    reviewed_by_date = models.DateField(null=True, blank=True)
-    checked_by_name = models.CharField(max_length=200, blank=True)
-    checked_by_designation = models.CharField(max_length=100, blank=True)
-    checked_by_date = models.DateField(null=True, blank=True)
-    new_review_date = models.DateField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.medicine_name} - {self.resident.name}"
-
-    def get_special_instructions_list(self):
-        if not self.special_instructions:
-            return []
-        return [line.strip() for line in self.special_instructions.splitlines() if line.strip()]
-
-    def get_additional_information_list(self):
-        if not self.additional_information:
-            return []
-        return [line.strip() for line in self.additional_information.splitlines() if line.strip()]
 
 
 class AuditLog(models.Model):
