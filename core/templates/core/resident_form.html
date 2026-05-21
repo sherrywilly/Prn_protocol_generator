@@ -94,6 +94,11 @@
                             <div class="text-danger small">{{ form.date_of_birth.errors }}</div>
                         </div>
                         <div class="col-md-4">
+                            <label class="form-label fw-semibold">Photo</label>
+                            {{ form.photo }}
+                            <div class="text-danger small">{{ form.photo.errors }}</div>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label fw-semibold">NHS number</label>
                             {{ form.nhs_number }}
                             <div class="text-danger small">{{ form.nhs_number.errors }}</div>

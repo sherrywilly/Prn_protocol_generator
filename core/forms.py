@@ -26,6 +26,7 @@ class ResidentForm(forms.ModelForm):
             'room_number',
             'residential_or_nursing',
             'date_of_birth',
+            'photo',
             'nhs_number',
             'medical_conditions',
             'allergies',
@@ -60,6 +61,7 @@ class ResidentForm(forms.ModelForm):
         ]
         widgets = {
             'date_of_birth': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'photo': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'room_number': forms.TextInput(attrs={'class': 'form-control'}),
             'residential_or_nursing': forms.Select(attrs={'class': 'form-control'}),
