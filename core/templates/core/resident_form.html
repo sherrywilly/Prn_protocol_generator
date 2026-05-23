@@ -103,11 +103,6 @@
                             {{ form.nhs_number }}
                             <div class="text-danger small">{{ form.nhs_number.errors }}</div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Next of kin</label>
-                            {{ form.next_of_kin }}
-                            <div class="text-danger small">{{ form.next_of_kin.errors }}</div>
-                        </div>
                     </div>
 
                     <h2 class="h5 section-heading">Clinical overview</h2>
@@ -166,6 +161,15 @@
                         <div class="col-md-6"><label class="form-label fw-semibold">Next of kin</label>{{ form.next_of_kin }}</div>
                         <div class="col-md-6"><label class="form-label fw-semibold">Next of kin contact</label>{{ form.next_of_kin_contact }}<div class="text-danger small">{{ form.next_of_kin_contact.errors }}</div></div>
                     </div>
+                    <datalist id="gpNameSuggestions">
+                        {% for name in gp_name_suggestions %}<option value="{{ name }}"></option>{% endfor %}
+                    </datalist>
+                    <datalist id="gpSurgerySuggestions">
+                        {% for surgery in gp_surgery_suggestions %}<option value="{{ surgery }}"></option>{% endfor %}
+                    </datalist>
+                    <datalist id="pharmacyNameSuggestions">
+                        {% for name in pharmacy_name_suggestions %}<option value="{{ name }}"></option>{% endfor %}
+                    </datalist>
 
                     <h2 class="h5 section-heading">Medication Support Notes</h2>
                     <div class="row g-3 mb-4">

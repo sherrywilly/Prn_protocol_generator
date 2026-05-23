@@ -201,6 +201,21 @@ def get_allergy_suggestions():
     return sorted(suggestions, key=str.lower)
 
 
+def get_gp_name_suggestions():
+    names = Resident.objects.order_by().values_list('gp_name', flat=True).distinct()
+    return sorted({n.strip() for n in names if n and n.strip()}, key=str.lower)
+
+
+def get_gp_surgery_suggestions():
+    surgeries = Resident.objects.order_by().values_list('gp_surgery', flat=True).distinct()
+    return sorted({s.strip() for s in surgeries if s and s.strip()}, key=str.lower)
+
+
+def get_pharmacy_name_suggestions():
+    names = Resident.objects.order_by().values_list('pharmacy_name', flat=True).distinct()
+    return sorted({n.strip() for n in names if n and n.strip()}, key=str.lower)
+
+
 def calculate_profile_gaps(data):
     missing = [label for field, label in REQUIRED_PROFILE_FIELDS.items() if not (data.get(field) or '').strip()]
     inconsistencies = []
@@ -251,6 +266,9 @@ def build_resident_form_context(request, form, title, resident=None):
         'required_profile_fields': REQUIRED_PROFILE_FIELDS,
         'medical_condition_suggestions': get_medical_condition_suggestions(),
         'allergy_suggestions': get_allergy_suggestions(),
+        'gp_name_suggestions': get_gp_name_suggestions(),
+        'gp_surgery_suggestions': get_gp_surgery_suggestions(),
+        'pharmacy_name_suggestions': get_pharmacy_name_suggestions(),
         'care_home_name': CARE_HOME_NAME,
     }
 

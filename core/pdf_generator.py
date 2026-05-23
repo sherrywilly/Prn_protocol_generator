@@ -290,7 +290,11 @@ def _add_resident_docx_checklist(document, rows):
             value_run = paragraph.add_run(item[1])
             value_run.font.name = 'Arial'
             value_run.font.size = Pt(8.1)
-            value_run.font.color.rgb = RGBColor(0x22, 0x35, 0x31)
+            if item[1] == 'Yes':
+                value_run.bold = True
+                value_run.font.color.rgb = RGBColor(0x1A, 0x7A, 0x4A)
+            else:
+                value_run.font.color.rgb = RGBColor(0x88, 0x88, 0x88)
 
 
 def _add_resident_docx_body_section(document, title, body):
@@ -370,6 +374,12 @@ def generate_resident_docx(resident):
             [('Pharmacy', resident.pharmacy_name or 'Not recorded'), ('Pharmacy Contact', resident.pharmacy_contact or 'Not recorded')],
         ],
     )
+
+    if (resident.medical_conditions or '').strip():
+        _add_resident_docx_body_section(document, 'MEDICAL CONDITIONS:', resident.medical_conditions)
+
+    if (resident.medication_alerts or '').strip():
+        _add_resident_docx_body_section(document, 'MEDICATION ALERTS:', resident.medication_alerts)
 
     _add_resident_docx_alert(document, f'ALLERGIES: {resident.allergies or "Not recorded"}')
 
