@@ -326,6 +326,128 @@ def _add_resident_docx_body_section(document, title, body):
         run.font.color.rgb = RGBColor(0x22, 0x35, 0x31)
 
 
+def _add_docx_header(document, care_home_name, sub_text, right_text):
+    table = document.add_table(rows=1, cols=2)
+    _set_table_layout(table)
+    row = table.rows[0]
+
+    left_cell = row.cells[0]
+    right_cell = row.cells[1]
+    left_cell.width = Cm(13)
+    right_cell.width = Cm(5)
+
+    for cell in (left_cell, right_cell):
+        _clear_cell(cell)
+        _set_cell_shading(cell, '1F5C4F')
+        _set_cell_margins(cell, top=80, start=120, bottom=80, end=120)
+
+    left_para = left_cell.paragraphs[0]
+    _set_paragraph_spacing(left_para, line=1.15)
+    name_run = left_para.add_run(care_home_name.upper())
+    name_run.bold = True
+    name_run.font.name = 'Arial'
+    name_run.font.size = Pt(12)
+    name_run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+    left_para.add_run('\n')
+    sub_run = left_para.add_run(sub_text.upper())
+    sub_run.font.name = 'Arial'
+    sub_run.font.size = Pt(8)
+    sub_run.font.color.rgb = RGBColor(0xD0, 0xE8, 0xDF)
+
+    right_para = right_cell.paragraphs[0]
+    _set_paragraph_spacing(right_para, line=1.15, alignment=WD_ALIGN_PARAGRAPH.RIGHT)
+    right_run = right_para.add_run(right_text)
+    right_run.font.name = 'Arial'
+    right_run.font.size = Pt(8)
+    right_run.font.color.rgb = RGBColor(0xD0, 0xE8, 0xDF)
+
+    spacer = document.add_paragraph()
+    _set_paragraph_spacing(spacer, after=3)
+
+
+def _add_docx_panel_header(document, title):
+    table = document.add_table(rows=1, cols=1)
+    _set_table_layout(table)
+    cell = table.cell(0, 0)
+    _clear_cell(cell)
+    _set_cell_shading(cell, '1F5C4F')
+    _set_cell_margins(cell, top=50, start=100, bottom=50, end=100)
+    para = cell.paragraphs[0]
+    _set_paragraph_spacing(para, line=1.0)
+    run = para.add_run(title)
+    run.bold = True
+    run.font.name = 'Arial'
+    run.font.size = Pt(8)
+    run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+    return table
+
+
+def _add_docx_panel_body_lines(document, lines, fill='FFFFFF', border_color='C4D8D2'):
+    table = document.add_table(rows=1, cols=1)
+    _set_table_layout(table)
+    cell = table.cell(0, 0)
+    _clear_cell(cell)
+    _set_cell_border(cell, color=border_color, size='6')
+    _set_cell_shading(cell, fill)
+    _set_cell_margins(cell, top=80, start=110, bottom=80, end=110)
+    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+
+    first = cell.paragraphs[0]
+    for idx, (label, value, is_yes) in enumerate(lines):
+        para = first if idx == 0 else cell.add_paragraph()
+        _set_paragraph_spacing(para, after=1, line=1.2)
+        if label:
+            lr = para.add_run(f'{label}: ')
+            lr.bold = True
+            lr.font.name = 'Arial'
+            lr.font.size = Pt(7.5)
+            lr.font.color.rgb = RGBColor(0x1F, 0x5C, 0x4F)
+        vr = para.add_run(value or 'Not recorded')
+        vr.font.name = 'Arial'
+        vr.font.size = Pt(8.5)
+        if is_yes is True:
+            vr.bold = True
+            vr.font.color.rgb = RGBColor(0x1A, 0x7A, 0x4A)
+        elif is_yes is False:
+            vr.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+        else:
+            vr.font.color.rgb = RGBColor(0x22, 0x35, 0x31)
+
+    spacer = document.add_paragraph()
+    _set_paragraph_spacing(spacer, after=3)
+
+
+def _add_docx_section(document, title, body_text):
+    heading = document.add_paragraph()
+    _set_paragraph_spacing(heading, before=4, after=3)
+    hr = heading.add_run(title.upper())
+    hr.bold = True
+    hr.font.name = 'Arial'
+    hr.font.size = Pt(9.5)
+    hr.font.color.rgb = RGBColor(0x1F, 0x5C, 0x4F)
+
+    table = document.add_table(rows=1, cols=1)
+    _set_table_layout(table)
+    cell = table.cell(0, 0)
+    _clear_cell(cell)
+    _set_cell_border(cell, color='DDE8E4', size='6')
+    _set_cell_shading(cell, 'F7FAF8')
+    _set_cell_margins(cell, top=120, start=140, bottom=120, end=140)
+
+    first = cell.paragraphs[0]
+    _set_paragraph_spacing(first, line=1.3)
+    for idx, line in enumerate(_split_lines(body_text)):
+        para = first if idx == 0 else cell.add_paragraph()
+        _set_paragraph_spacing(para, after=1, line=1.3)
+        run = para.add_run(line)
+        run.font.name = 'Arial'
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(0x22, 0x35, 0x31)
+
+    spacer = document.add_paragraph()
+    _set_paragraph_spacing(spacer, after=4)
+
+
 def generate_resident_pdf(resident):
     try:
         from weasyprint import HTML
@@ -350,7 +472,6 @@ def generate_resident_pdf(resident):
     return response
 
 
-
 def generate_resident_docx(resident):
     if Document is None:
         return HttpResponse('python-docx is not installed. Cannot generate DOCX.', status=500)
@@ -358,53 +479,101 @@ def generate_resident_docx(resident):
     document = Document()
     _set_document_defaults(document)
 
-    _add_resident_docx_banner(document, 'WELSHWOOD MANOR', fill='E3F0E8', color='1F5C4F', font_size=9, border_color='D3E1D8')
-    _add_resident_docx_center_text(document, 'RESIDENT PROFILE', size=8.2, bold=True, color='3A4A4A', after=3)
-    _add_resident_docx_photo(document, resident)
-    _add_resident_docx_center_text(document, f'BEDROOM NUMBER {resident.room_number or "N/A"}', size=8.6, bold=True, color='4A6A5A', after=3)
+    care_home = 'WELSHWOOD MANOR'
 
-    _add_resident_docx_info_table(
+    # ── PAGE 1 ──────────────────────────────────────────────────────
+    _add_docx_header(
         document,
-        [
-            [('Name', resident.name or 'Not recorded'), ('NOK', resident.next_of_kin or 'Not recorded')],
-            [('Date of Birth', _format_date(resident.date_of_birth)), ('NOK Contact', resident.next_of_kin_contact or 'Not recorded')],
-            [('Date of Photo', _format_date(resident.updated_at.date() if resident.updated_at else None)), ('NHS Number', resident.nhs_number or 'Not recorded')],
-            [('GP Surgery', resident.gp_surgery or resident.gp_name or 'Not recorded'), ('GP Contact', resident.gp_contact or 'Not recorded')],
-            [('Residential or Nursing', resident.get_residential_or_nursing_display()), ('DNAR in place', 'YES' if resident.dnar_in_place else 'No')],
-            [('Pharmacy', resident.pharmacy_name or 'Not recorded'), ('Pharmacy Contact', resident.pharmacy_contact or 'Not recorded')],
-        ],
+        care_home,
+        'MAR Resident Profile',
+        f'Bedroom {resident.room_number or "N/A"}\n{resident.get_residential_or_nursing_display()}',
     )
 
-    if (resident.medical_conditions or '').strip():
-        _add_resident_docx_body_section(document, 'MEDICAL CONDITIONS:', resident.medical_conditions)
+    # Resident ID block
+    id_rows = [
+        ('Name', resident.name or 'Not recorded', None),
+        ('Date of Birth', _format_date(resident.date_of_birth), None),
+        ('NHS Number', resident.nhs_number or 'Not recorded', None),
+        ('Date of Admission', _format_date(resident.created_at.date() if resident.created_at else None), None),
+        ('Date of Photo', _format_date(resident.updated_at.date() if resident.updated_at else None), None),
+        ('DNAR in place', 'YES' if resident.dnar_in_place else 'No', resident.dnar_in_place),
+    ]
+    _add_docx_panel_header(document, 'Resident Identification')
+    _add_docx_panel_body_lines(document, id_rows)
 
+    # Allergy alert
+    _add_resident_docx_alert(document, f'⚠  ALLERGIES: {resident.allergies or "Not recorded"}')
+
+    # Critical Medical Alerts
     if (resident.medication_alerts or '').strip():
-        _add_resident_docx_body_section(document, 'MEDICATION ALERTS:', resident.medication_alerts)
+        _add_docx_panel_header(document, 'Critical Medical Alerts')
+        _add_docx_panel_body_lines(document, [
+            ('Medication alerts', resident.medication_alerts, None),
+        ], fill='FFF8EC', border_color='E8C060')
 
-    _add_resident_docx_alert(document, f'ALLERGIES: {resident.allergies or "Not recorded"}')
+    # Medical Conditions
+    if (resident.medical_conditions or '').strip():
+        _add_docx_panel_header(document, 'Medical Conditions')
+        cond_lines = [(None, line, None) for line in _split_lines(resident.medical_conditions)]
+        _add_docx_panel_body_lines(document, cond_lines)
 
-    _add_resident_docx_checklist(
+    # Key Contacts
+    _add_docx_panel_header(document, 'Key Contacts')
+    _add_docx_panel_body_lines(document, [
+        ('GP', resident.gp_name or 'Not recorded', None),
+        ('GP Surgery', resident.gp_surgery or 'Not recorded', None),
+        ('GP Contact', resident.gp_contact or 'Not recorded', None),
+        ('Pharmacy', resident.pharmacy_name or 'Not recorded', None),
+        ('Pharmacy Contact', resident.pharmacy_contact or 'Not recorded', None),
+        ('Next of Kin', resident.next_of_kin or 'Not recorded', None),
+        ('NOK Contact', resident.next_of_kin_contact or 'Not recorded', None),
+    ])
+
+    # Clinical Checklist
+    _add_docx_panel_header(document, 'Clinical Checklist')
+    _add_docx_panel_body_lines(document, [
+        ('Diabetic', 'Yes' if resident.is_diabetic else 'No', resident.is_diabetic),
+        ('PEG in situ', 'Yes' if resident.has_peg else 'No', resident.has_peg),
+        ('Self medicates', 'Yes' if resident.self_medicates else 'No', resident.self_medicates),
+        ('Risk assessment in place', 'Yes' if resident.risk_assessment_in_place else 'No', resident.risk_assessment_in_place),
+        ('Swallowing difficulties', 'Yes' if resident.has_swallowing_difficulties else 'No', resident.has_swallowing_difficulties),
+        ('On oxygen', 'Yes' if resident.on_oxygen else 'No', resident.on_oxygen),
+        ('Can take medication orally', 'Yes' if resident.can_take_medication_orally else 'No', resident.can_take_medication_orally),
+        ('Requires inhaler', 'Yes' if resident.requires_inhaler else 'No', resident.requires_inhaler),
+        ('Has medication capacity', 'Yes' if resident.has_medication_capacity else 'No', resident.has_medication_capacity),
+        ("Has Parkinson's", 'Yes' if resident.has_parkinsons else 'No', resident.has_parkinsons),
+        ('MCA in place', 'Yes' if resident.mca_in_place else 'No', resident.mca_in_place),
+        ('Has dementia', 'Yes' if resident.has_dementia else 'No', resident.has_dementia),
+        ('Blood thinning medication', 'Yes' if resident.on_blood_thinning_medication else 'No', resident.on_blood_thinning_medication),
+        ('Needs pulse/BP before medication', 'Yes' if resident.requires_pulse_or_bp_before_medication else 'No', resident.requires_pulse_or_bp_before_medication),
+    ])
+
+    # ── PAGE 2 ──────────────────────────────────────────────────────
+    document.add_page_break()
+    _add_docx_header(
         document,
-        [
-            [('Is diabetic', 'Yes' if resident.is_diabetic else 'No'), ('Has a PEG in situ', 'Yes' if resident.has_peg else 'No')],
-            [('Self medicates', 'Yes' if resident.self_medicates else 'No'), ('Risk assessment in place', 'Yes' if resident.risk_assessment_in_place else 'No')],
-            [('Swallowing difficulties', 'Yes' if resident.has_swallowing_difficulties else 'No'), ('On oxygen', 'Yes' if resident.on_oxygen else 'No')],
-            [('Can take medication orally', 'Yes' if resident.can_take_medication_orally else 'No'), ('Requires an inhaler', 'Yes' if resident.requires_inhaler else 'No')],
-            [('Has capacity around medication', 'Yes' if resident.has_medication_capacity else 'No'), ('Has Parkinsons', 'Yes' if resident.has_parkinsons else 'No')],
-            [('MCA in place', 'Yes' if resident.mca_in_place else 'No'), ('Has dementia', 'Yes' if resident.has_dementia else 'No')],
-            [('On blood thinning medication', 'Yes' if resident.on_blood_thinning_medication else 'No'), ('Needs pulse or BP before medication', 'Yes' if resident.requires_pulse_or_bp_before_medication else 'No')],
-        ],
+        care_home,
+        f'Medication Support Notes — {resident.name}',
+        f'Room {resident.room_number or "N/A"}',
     )
 
-    document.add_page_break()
-    _add_resident_docx_banner(document, 'WELSHWOOD MANOR', fill='E3F0E8', color='1F5C4F', font_size=10, border_color='D3E1D8')
-    _add_resident_docx_body_section(
+    _add_docx_section(
         document,
-        f'WHAT LEVEL OF SUPPORT IS NEEDED FOR {resident.name.upper() if resident.name else "THIS RESIDENT"}:',
+        f'What level of support is needed for {resident.name}',
         resident.administration_preferences or 'Not recorded',
     )
+
+    if (resident.monitoring_requirements or '').strip():
+        _add_docx_section(document, 'Monitoring requirements', resident.monitoring_requirements)
+
+    if (resident.mental_capacity or '').strip():
+        _add_docx_section(document, 'Mental capacity', resident.mental_capacity)
+
+    if (resident.legal_safeguarding_information or '').strip():
+        _add_docx_section(document, 'Legal / safeguarding information', resident.legal_safeguarding_information)
+
     if (resident.mar_front_page_text or '').strip():
-        _add_resident_docx_body_section(document, 'ADDITIONAL MAR GUIDANCE:', resident.mar_front_page_text)
+        _add_docx_section(document, 'Additional MAR guidance', resident.mar_front_page_text)
 
     buffer = BytesIO()
     document.save(buffer)
